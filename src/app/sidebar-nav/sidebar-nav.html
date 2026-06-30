@@ -1,0 +1,11 @@
+<mat-nav-list class ="bg-sky-50">
+  <ng-container *ngFor="let group of visibleGroups" >
+    <h3 class="nav-section-label p-2 pb-2 pt-2">{{ group.label }}</h3>
+    <a mat-list-item *ngFor="let item of group.items"
+       [routerLink]="item.route"
+       routerLinkActive="active-link">
+      <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+      <span matListItemTitle>{{ item.label }}</span>
+    </a>
+  </ng-container>
+</mat-nav-list>
