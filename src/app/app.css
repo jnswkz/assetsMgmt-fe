@@ -1,0 +1,12 @@
+.app-shell {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.app-sidenav {
+  width: 256px;
+}
+
+.app-content {
+  min-height: 100vh;
+}

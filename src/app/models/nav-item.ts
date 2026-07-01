@@ -6,8 +6,7 @@ export interface NavItem {
 }
 
 export interface NavGroup {
-  label: string;       // section header e.g. "ASSETS"
-  roles: Role[];        // optional shortcut, derived from children too
+  label: string;
   items: NavItem[];
 }
 

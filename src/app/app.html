@@ -1,14 +1,13 @@
-<!-- app.html -->
-<mat-sidenav-container class="h-screen w-full">
-  <mat-sidenav mode="side" opened class="app-sidenav">
-    <app-sidebar-nav></app-sidebar-nav>
-  </mat-sidenav>
+@if (isLoginPage()) {
+  <router-outlet></router-outlet>
+} @else {
+  <mat-sidenav-container class="app-shell">
+    <mat-sidenav mode="side" opened class="app-sidenav">
+      <app-sidebar-nav [role]="auth.role()"></app-sidebar-nav>
+    </mat-sidenav>
 
-  <mat-sidenav-content>
-    <mat-toolbar color="primary">
-      <span>AssetHub</span>
-    </mat-toolbar>
-
-    <router-outlet></router-outlet>
-  </mat-sidenav-content>
-</mat-sidenav-container>
+    <mat-sidenav-content class="app-content">
+      <router-outlet></router-outlet>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+}

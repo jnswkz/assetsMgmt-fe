@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { SidebarNav } from './sidebar-nav';
 
@@ -9,6 +10,7 @@ describe('SidebarNav', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SidebarNav],
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SidebarNav);
@@ -18,5 +20,39 @@ describe('SidebarNav', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('should show admin navigation for AdminIT', () => {
+    fixture.componentRef.setInput('role', 'AdminIT');
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Pending Approvals');
+    expect(compiled.textContent).toContain('Management');
+    expect(compiled.textContent).toContain('Users');
+  });
+
+  it('should show management navigation for Manager without admin items', () => {
+    fixture.componentRef.setInput('role', 'Manager');
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Pending Approvals');
+    expect(compiled.textContent).toContain('Management');
+    expect(compiled.textContent).not.toContain('Users');
+  });
+
+  it('should show employee navigation without approvals or management items', () => {
+    fixture.componentRef.setInput('role', 'Employee');
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const sectionLabels = Array.from(compiled.querySelectorAll('.nav-group__label')).map(
+      label => label.textContent?.trim()
+    );
+
+    expect(compiled.textContent).toContain('My Requests');
+    expect(compiled.textContent).not.toContain('Pending Approvals');
+    expect(sectionLabels).not.toContain('Management');
   });
 });

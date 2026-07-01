@@ -1,0 +1,81 @@
+<main class="login-page" aria-labelledby="login-title">
+  <section class="login-shell">
+    <header class="brand" aria-label="AssetHub">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3.5 6 7v7l6 3.5 6-3.5V7l-6-3.5Z" />
+          <path d="M12 10.5 6 7m6 3.5L18 7m-6 3.5v7" />
+          <path d="m8.7 12.4-2.7 1.6m9.3-1.6 2.7 1.6M12 7v-3.5" />
+        </svg>
+      </span>
+      <span class="brand-name">AssetHub</span>
+    </header>
+
+    <form
+      class="login-card"
+      aria-describedby="login-subtitle mock-login-help"
+      [formGroup]="loginForm"
+      (ngSubmit)="onSubmit()"
+    >
+      <div class="login-card__header">
+        <h1 id="login-title">Sign in to your workspace</h1>
+        <p id="login-subtitle">Manage company hardware across its lifecycle.</p>
+      </div>
+
+      <div class="login-form">
+        <div class="mock-profiles" aria-labelledby="mock-login-help">
+          <p id="mock-login-help">Mock login</p>
+          <div class="mock-profile-list">
+            @for (profile of mockUsers; track profile.username) {
+              <button
+                class="mock-profile"
+                [class.mock-profile--active]="loginForm.controls.username.value === profile.username"
+                type="button"
+                (click)="selectMockUser(profile.username)"
+              >
+                <span>{{ profile.initials }}</span>
+                <span>
+                  <strong>{{ profile.displayName }}</strong>
+                  <small>{{ profile.role }}</small>
+                </span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="username">Username</label>
+          <input
+            id="username"
+            type="text"
+            autocomplete="username"
+            formControlName="username"
+            placeholder="username"
+          />
+        </div>
+
+        <div class="field">
+          <div class="field__label-row">
+            <label for="password">Password</label>
+            <a href="/forgot-password" aria-label="Reset your password">Forgot?</a>
+          </div>
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            formControlName="password"
+            placeholder="password"
+          />
+        </div>
+
+        @if (errorMessage()) {
+          <p class="login-error" role="alert">{{ errorMessage() }}</p>
+        }
+
+        <button type="submit">Sign in</button>
+      </div>
+    </form>
+
+    <p class="login-footer">&copy; 2026 AssetHub · Internal use only</p>
+  </section>
+</main>

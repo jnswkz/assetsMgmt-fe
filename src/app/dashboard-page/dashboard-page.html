@@ -1,0 +1,144 @@
+<div class="dashboard-page">
+  <header class="topbar">
+    <label class="search-box" for="dashboard-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input id="dashboard-search" type="search" placeholder="Search assets, users, requests..." />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Toggle theme">
+        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <button class="profile-button" type="button" aria-label="Open user menu">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="profile-copy">
+          <span>{{ user().displayName }}</span>
+          <small>{{ user().department }}</small>
+        </span>
+        <mat-icon aria-hidden="true">expand_more</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <main class="dashboard-content" aria-labelledby="dashboard-title">
+    <section class="page-header">
+      <div>
+        <h1 id="dashboard-title">Welcome, {{ user().firstName }}</h1>
+        <p>A snapshot of your fleet across procurement, allocation, and maintenance.</p>
+      </div>
+
+      <a class="primary-link" routerLink="/assets">
+        <span>View all assets</span>
+        <mat-icon aria-hidden="true">north_east</mat-icon>
+      </a>
+    </section>
+
+    <section class="stats-grid" aria-label="Asset summary">
+      @for (stat of view().stats; track stat.label) {
+        <article class="stat-card">
+          <div>
+            <p>{{ stat.label }}</p>
+            <strong>{{ stat.value }}</strong>
+          </div>
+          <span class="stat-icon" [class]="'stat-icon stat-icon--' + stat.tone">
+            <mat-icon aria-hidden="true">{{ stat.icon }}</mat-icon>
+          </span>
+        </article>
+      }
+    </section>
+
+    <section class="chart-grid" aria-label="Asset charts">
+      <article class="panel status-panel">
+        <h2>Assets by status</h2>
+        <div class="donut" [style.background]="donutBackground" aria-hidden="true">
+          <span></span>
+        </div>
+        <ul class="legend" aria-label="Assets by status legend">
+          @for (slice of statusSlices; track slice.label) {
+            <li>
+              <span [style.background]="slice.color"></span>
+              {{ slice.label }}
+            </li>
+          }
+        </ul>
+      </article>
+
+      <article class="panel category-panel">
+        <h2>Assets by category</h2>
+        <div class="bar-chart" aria-label="Assets by category bar chart">
+          <div class="axis-labels" aria-hidden="true">
+            <span>12</span>
+            <span>9</span>
+            <span>6</span>
+            <span>3</span>
+            <span>0</span>
+          </div>
+          <div class="bars">
+            @for (bar of categoryBars; track bar.label) {
+              <div class="bar-column">
+                <span class="bar" [style.height]="barHeight(bar.value)"></span>
+                <span class="bar-label">{{ bar.label }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="lower-grid">
+      <article class="panel list-panel">
+        <header class="panel-header">
+          <h2>{{ view().requestsTitle }}</h2>
+          @if (view().showApprovalActions) {
+            <a routerLink="/requests/approvals">
+              <span>View all</span>
+              <mat-icon aria-hidden="true">north_east</mat-icon>
+            </a>
+          }
+        </header>
+
+        <div class="request-list">
+          @for (request of view().requests; track request.id) {
+            <article class="request-row">
+              <span class="asset-id">{{ request.id }}</span>
+              <div class="request-copy">
+                <strong>{{ request.asset }}</strong>
+                <p>{{ request.details }}</p>
+              </div>
+              <span class="status-badge" [class]="'status-badge status-badge--' + request.status.toLowerCase()">
+                {{ request.status }}
+              </span>
+              @if (view().showApprovalActions) {
+                <div class="approval-actions">
+                  <button class="action-button action-button--approve" type="button" aria-label="Approve request">
+                    <mat-icon aria-hidden="true">check</mat-icon>
+                  </button>
+                  <button class="action-button action-button--reject" type="button" aria-label="Reject request">
+                    <mat-icon aria-hidden="true">close</mat-icon>
+                  </button>
+                </div>
+              }
+            </article>
+          }
+        </div>
+      </article>
+
+      <article class="panel activity-panel">
+        <h2>Recent activity</h2>
+        <div class="activity-list">
+          @for (activity of view().activities; track activity.message) {
+            <article>
+              <p>{{ activity.message }}</p>
+              <small>{{ activity.time }}</small>
+            </article>
+          }
+        </div>
+      </article>
+    </section>
+  </main>
+</div>
