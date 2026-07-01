@@ -1,0 +1,117 @@
+<div class="history-page">
+  <header class="topbar">
+    <label class="search-box" for="history-global-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="history-global-search"
+        type="search"
+        placeholder="Search assets, users, requests..."
+        [value]="globalSearch()"
+        (input)="updateGlobalSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Toggle theme">
+        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <button class="profile-button" type="button" aria-label="Open user menu">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="profile-copy">
+          <span>{{ user().displayName }}</span>
+          <small>{{ user().department }}</small>
+        </span>
+        <mat-icon aria-hidden="true">expand_more</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <main class="history-content" aria-labelledby="history-title">
+    @if (canView()) {
+      <section class="page-header">
+        <div>
+          <h1 id="history-title">Allocation history</h1>
+          <p>A global timeline of every allocation event.</p>
+        </div>
+      </section>
+
+      <section class="history-toolbar" aria-label="Allocation history filters">
+        <label class="select-button history-select">
+          <span class="sr-only">Filter by asset</span>
+          <select [value]="assetFilter()" (change)="updateAssetFilter($event)">
+            <option value="">All assets</option>
+            @for (asset of assetOptions; track asset) {
+              <option [value]="asset">{{ asset }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </label>
+
+        <label class="select-button history-select">
+          <span class="sr-only">Filter by user</span>
+          <select [value]="userFilter()" (change)="updateUserFilter($event)">
+            <option value="">All users</option>
+            @for (profile of userOptions; track profile) {
+              <option [value]="profile">{{ profile }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </label>
+      </section>
+
+      <section class="history-card" aria-label="Allocation history table">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Asset code</th>
+                <th scope="col">Model</th>
+                <th scope="col">User</th>
+                <th scope="col">Event</th>
+                <th scope="col">Start</th>
+                <th scope="col">End</th>
+                <th scope="col">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (record of filteredRecords(); track record.assetCode + record.start + record.event) {
+                <tr>
+                  <td class="asset-code-cell">{{ record.assetCode }}</td>
+                  <td>{{ record.model }}</td>
+                  <td>{{ record.user }}</td>
+                  <td>
+                    <span
+                      class="event-chip"
+                      [class.event-chip--allocated]="record.event === 'Allocated'"
+                      [class.event-chip--transferred]="record.event === 'Transferred'"
+                      [class.event-chip--returned]="record.event === 'Returned'"
+                    >
+                      {{ record.event }}
+                    </span>
+                  </td>
+                  <td class="muted-cell">{{ record.start }}</td>
+                  <td class="muted-cell">{{ record.end }}</td>
+                  <td class="notes-cell">{{ record.notes }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="empty-row" colspan="7">No allocation history matches your filters.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    } @else {
+      <section class="access-panel" aria-labelledby="history-title">
+        <h1 id="history-title">Allocation history</h1>
+        <p>Only managers and AdminIT users can view allocation history.</p>
+      </section>
+    }
+  </main>
+</div>
