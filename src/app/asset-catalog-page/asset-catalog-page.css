@@ -1,0 +1,57 @@
+:host {
+  display: block;
+}
+
+.catalog-content {
+  padding: 32px;
+}
+
+.select-button {
+  min-width: 180px;
+}
+
+.view-toggle {
+  align-items: center;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+
+.toggle-button {
+  border: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.toggle-button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.toggle-button:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+.toggle-button--active {
+  background: var(--soft);
+}
+
+.catalog-card {
+  border: 1px solid #dedede;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.badge {
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  line-height: 16px;
+  padding: 2px 8px;
+}
+
+@media (max-width: 860px) {
+  .catalog-content {
+    padding: 20px;
+  }
+}

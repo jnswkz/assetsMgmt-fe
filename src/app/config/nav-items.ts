@@ -12,7 +12,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         label: 'Asset Catalog',
-        icon: 'deployed_code',
+        icon: 'category',
         route: '/assets/catalog',
         roles: ['AdminIT', 'Manager', 'Employee'],
       },

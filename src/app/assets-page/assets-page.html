@@ -1,0 +1,263 @@
+<div class="assets-page">
+  <header class="topbar">
+    <label class="search-box" for="assets-global-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="assets-global-search"
+        type="search"
+        placeholder="Search assets, users, requests..."
+        [value]="globalSearch()"
+        (input)="updateGlobalSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Toggle theme">
+        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <button class="profile-button" type="button" aria-label="Open user menu">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="profile-copy">
+          <span>{{ user().displayName }}</span>
+          <small>{{ user().department }}</small>
+        </span>
+        <mat-icon aria-hidden="true">expand_more</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <main class="assets-content">
+    @if (selectedAssetDetail(); as detail) {
+      <section class="asset-detail" aria-labelledby="asset-detail-title">
+        <button class="back-button" type="button" (click)="closeAssetDetail()">
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>
+          <span>Back to assets</span>
+        </button>
+
+        <section class="detail-summary" aria-label="Asset summary">
+          <div class="qr-panel" aria-label="QR code for {{ detail.asset.code }}">
+            <div class="qr-code" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <small>Scan to look up</small>
+          </div>
+
+          <div class="detail-copy">
+            <div class="detail-title-row">
+              <h1 id="asset-detail-title">{{ detail.asset.code }}</h1>
+              <span
+                class="status-chip"
+                [class.status-chip--allocated]="detail.asset.status === 'Allocated'"
+                [class.status-chip--instock]="detail.asset.status === 'In stock'"
+                [class.status-chip--maintenance]="detail.asset.status === 'Maintenance'"
+                [class.status-chip--locked]="detail.asset.status === 'Locked'"
+                [class.status-chip--retired]="detail.asset.status === 'Retired'"
+                [class.status-chip--lost]="detail.asset.status === 'Lost'"
+                [class.status-chip--disposed]="detail.asset.status === 'Disposed'"
+              >
+                <span aria-hidden="true"></span>
+                {{ detail.asset.status }}
+              </span>
+            </div>
+
+            <p>{{ detail.asset.model }} · {{ detail.manufacturer }}</p>
+
+            <dl class="detail-grid">
+              <div>
+                <dt>Serial</dt>
+                <dd>{{ detail.asset.serial }}</dd>
+              </div>
+              <div>
+                <dt>Current holder</dt>
+                <dd>{{ detail.asset.currentHolder }}</dd>
+              </div>
+              <div>
+                <dt>Location</dt>
+                <dd>{{ detail.asset.location }}</dd>
+              </div>
+              <div>
+                <dt>Acquisition cost</dt>
+                <dd>{{ detail.acquisitionCost }}</dd>
+              </div>
+              <div>
+                <dt>Acquisition date</dt>
+                <dd>{{ detail.acquisitionDate }}</dd>
+              </div>
+              <div>
+                <dt>Salvage value</dt>
+                <dd>{{ detail.salvageValue }}</dd>
+              </div>
+              <div>
+                <dt>Warranty expiry</dt>
+                <dd>{{ detail.warrantyExpiry }}</dd>
+              </div>
+              <div class="detail-grid__wide">
+                <dt>Notes</dt>
+                <dd>{{ detail.notes }}</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="detail-tabs" aria-label="Asset detail sections">
+          <div class="tab-list" role="tablist" aria-label="Asset information">
+            <button class="tab tab--active" type="button" role="tab" aria-selected="true">Overview</button>
+            <button class="tab" type="button" role="tab" aria-selected="false">Allocation history</button>
+            <button class="tab" type="button" role="tab" aria-selected="false">Maintenance</button>
+            <button class="tab" type="button" role="tab" aria-selected="false">Depreciation</button>
+          </div>
+
+          <div class="tab-panel" role="tabpanel">
+            <section>
+              <h2>Specs</h2>
+              <p>{{ detail.specs }}</p>
+            </section>
+
+            <section>
+              <h2>Lifecycle</h2>
+              <ul>
+                <li>
+                  <mat-icon aria-hidden="true">event_available</mat-icon>
+                  <span>Procured {{ detail.acquisitionDate }}</span>
+                </li>
+                <li>
+                  <mat-icon aria-hidden="true">timeline</mat-icon>
+                  <span>Default useful life {{ detail.usefulLife }} (Straight Line)</span>
+                </li>
+                <li>
+                  <mat-icon aria-hidden="true">construction</mat-icon>
+                  <span>{{ detail.maintenanceRecords }} maintenance record(s)</span>
+                </li>
+                <li>
+                  <mat-icon aria-hidden="true">assignment_ind</mat-icon>
+                  <span>{{ detail.allocationEvents }} allocation event(s)</span>
+                </li>
+              </ul>
+            </section>
+          </div>
+        </section>
+      </section>
+    } @else {
+      <section class="page-header" aria-labelledby="assets-title">
+        <div>
+          <h1 id="assets-title">Assets</h1>
+          <p>Every physical asset unit, with status and current holder.</p>
+        </div>
+
+        @if (canManageAssets()) {
+          <button class="primary-action" type="button">
+            <mat-icon aria-hidden="true">add</mat-icon>
+            <span>New asset</span>
+          </button>
+        }
+      </section>
+
+      <section class="toolbar" aria-label="Asset filters">
+        <label class="asset-search" for="asset-search">
+          <mat-icon aria-hidden="true">search</mat-icon>
+          <input
+            id="asset-search"
+            type="search"
+            placeholder="Search code or serial..."
+            [value]="assetSearch()"
+            (input)="updateAssetSearch($event)"
+          />
+        </label>
+
+        <label class="select-button select-button--status">
+          <select aria-label="Filter by status" [value]="statusFilter()" (change)="updateStatusFilter($event)">
+            <option value="">All statuses</option>
+            @for (status of statuses; track status) {
+              <option [value]="status">{{ status }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </label>
+
+        <label class="select-button select-button--model">
+          <select aria-label="Filter by model" [value]="modelFilter()" (change)="updateModelFilter($event)">
+            <option value="">All models</option>
+            @for (model of models; track model) {
+              <option [value]="model">{{ model }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </label>
+      </section>
+
+      <section class="assets-card" aria-label="Assets table">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Asset code</th>
+                <th scope="col">Serial</th>
+                <th scope="col">Model</th>
+                <th scope="col">Status</th>
+                <th scope="col">Current holder</th>
+                <th scope="col">Location</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (asset of filteredAssets(); track asset.code) {
+                <tr>
+                  <td class="asset-code">{{ asset.code }}</td>
+                  <td>{{ asset.serial }}</td>
+                  <td>{{ asset.model }}</td>
+                  <td>
+                    <span
+                      class="status-chip"
+                      [class.status-chip--allocated]="asset.status === 'Allocated'"
+                      [class.status-chip--instock]="asset.status === 'In stock'"
+                      [class.status-chip--maintenance]="asset.status === 'Maintenance'"
+                      [class.status-chip--locked]="asset.status === 'Locked'"
+                      [class.status-chip--retired]="asset.status === 'Retired'"
+                      [class.status-chip--lost]="asset.status === 'Lost'"
+                      [class.status-chip--disposed]="asset.status === 'Disposed'"
+                    >
+                      <span aria-hidden="true"></span>
+                      {{ asset.status }}
+                    </span>
+                  </td>
+                  <td>{{ asset.currentHolder }}</td>
+                  <td>{{ asset.location }}</td>
+                  <td class="row-actions">
+                    <button type="button" aria-label="Show QR details for {{ asset.code }}" (click)="openAssetDetail(asset)">
+                      <mat-icon aria-hidden="true">qr_code</mat-icon>
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="empty-row" colspan="7">No assets match your search.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <footer class="table-footer">
+          <span>Showing {{ filteredAssets().length }} of {{ assets.length }}</span>
+          <nav class="pagination" aria-label="Assets pagination">
+            <button type="button">Previous</button>
+            <button type="button">Next</button>
+          </nav>
+        </footer>
+      </section>
+    }
+  </main>
+</div>
