@@ -1,0 +1,165 @@
+<div class="departments-page">
+  <header class="topbar">
+    <label class="search-box" for="departments-global-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="departments-global-search"
+        type="search"
+        placeholder="Search assets, users, requests..."
+        [value]="globalSearch()"
+        (input)="updateGlobalSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Toggle theme">
+        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <button class="profile-button" type="button" aria-label="Open user menu">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="profile-copy">
+          <span>{{ user().displayName }}</span>
+          <small>{{ user().department }}</small>
+        </span>
+        <mat-icon aria-hidden="true">expand_more</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <main class="departments-content" aria-labelledby="departments-title">
+    @if (canView()) {
+      <section class="page-header">
+        <div>
+          <h1 id="departments-title">Departments</h1>
+          <p>Organizational units and their managers.</p>
+        </div>
+
+        @if (canManage()) {
+          <button class="primary-action new-department-button" type="button" (click)="openAddDialog()">
+            <mat-icon aria-hidden="true">add</mat-icon>
+            New department
+          </button>
+        }
+      </section>
+
+      <section class="departments-card" aria-label="Departments table">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Code</th>
+                <th scope="col">Name</th>
+                <th scope="col">Manager</th>
+                <th scope="col">Active</th>
+                <th class="numeric-cell" scope="col">Users</th>
+                @if (canManage()) {
+                  <th class="actions-heading" scope="col">
+                    <span class="sr-only">Actions</span>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (department of filteredDepartments(); track department.code) {
+                <tr>
+                  <td class="code-cell">{{ department.code }}</td>
+                  <td class="name-cell">{{ department.name }}</td>
+                  <td>{{ department.manager }}</td>
+                  <td>
+                    <button
+                      class="switch-button"
+                      type="button"
+                      [class.switch-button--active]="department.active"
+                      [attr.aria-label]="(department.active ? 'Disable ' : 'Enable ') + department.name"
+                      [attr.aria-pressed]="department.active"
+                      [disabled]="!canManage()"
+                      (click)="toggleDepartment(department)"
+                    >
+                      <span aria-hidden="true"></span>
+                    </button>
+                  </td>
+                  <td class="numeric-cell">{{ department.users }}</td>
+                  @if (canManage()) {
+                    <td class="row-actions">
+                      <button type="button" aria-label="Department actions for {{ department.name }}">
+                        <mat-icon aria-hidden="true">more_horiz</mat-icon>
+                      </button>
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="empty-row" [attr.colspan]="canManage() ? 6 : 5">No departments match your search.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    } @else {
+      <section class="access-panel" aria-labelledby="departments-title">
+        <h1 id="departments-title">Departments</h1>
+        <p>Only managers and AdminIT users can view departments.</p>
+      </section>
+    }
+
+    <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  </main>
+
+  @if (isAddDialogOpen()) {
+    <button class="dialog-backdrop" type="button" aria-label="Close new department dialog" (click)="closeAddDialog()"></button>
+    <section
+      class="department-dialog"
+      aria-labelledby="new-department-title"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+      cdkTrapFocus
+      cdkTrapFocusAutoCapture
+      (keydown.escape)="closeAddDialog()"
+    >
+      <header class="dialog-header">
+        <div>
+          <h2 id="new-department-title">New department</h2>
+          <p>Add a department before backend API integration.</p>
+        </div>
+        <button class="dialog-close" type="button" aria-label="Close new department dialog" (click)="closeAddDialog()">
+          <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+      </header>
+
+      <form class="department-form" (submit)="$event.preventDefault(); addDepartment()">
+        <label>
+          Code
+          <input type="text" autocomplete="off" maxlength="8" [value]="codeInput()" (input)="updateCode($event)" />
+        </label>
+        <label>
+          Name
+          <input type="text" autocomplete="off" [value]="nameInput()" (input)="updateName($event)" />
+        </label>
+        <label>
+          Manager
+          <input type="text" autocomplete="off" [value]="managerInput()" (input)="updateManager($event)" />
+        </label>
+        <label>
+          Users
+          <input type="number" min="0" step="1" [value]="usersInput()" (input)="updateUsers($event)" />
+        </label>
+
+        @if (formError()) {
+          <p class="form-error">{{ formError() }}</p>
+        }
+
+        <div class="dialog-actions">
+          <button class="secondary-action" type="button" (click)="closeAddDialog()">Cancel</button>
+          <button class="primary-action" type="submit">Add department</button>
+        </div>
+      </form>
+    </section>
+  }
+</div>

@@ -1,0 +1,116 @@
+:host {
+  display: block;
+}
+
+.disposals-content {
+  padding: 32px;
+}
+
+.disposals-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.disposals-select {
+  background: var(--soft);
+  border: 0;
+  width: 180px;
+}
+
+.disposals-card {
+  border: 1px solid #dedede;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.disposals-page table {
+  min-width: 1228px;
+}
+
+.disposals-page td {
+  height: 43px;
+}
+
+.asset-code-cell {
+  font-weight: 500;
+}
+
+.numeric-cell {
+  text-align: right;
+}
+
+.muted-cell,
+.reason-cell {
+  color: var(--muted);
+}
+
+.reason-cell {
+  max-width: 454px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.disposal-chip {
+  background: var(--disposal-bg);
+  border: 1px solid var(--disposal-border);
+  border-radius: 999px;
+  color: var(--disposal-text);
+  display: inline-flex;
+  line-height: 20px;
+  padding: 2px 9px;
+}
+
+.disposal-chip--sold {
+  --disposal-bg: #ecfdf5;
+  --disposal-border: #a4f4cf;
+  --disposal-text: #007a55;
+}
+
+.disposal-chip--lost {
+  --disposal-bg: #fef2f2;
+  --disposal-border: #ffc9c9;
+  --disposal-text: #c10007;
+}
+
+.disposal-chip--donated {
+  --disposal-bg: #eff6ff;
+  --disposal-border: #bedbff;
+  --disposal-text: #1447e6;
+}
+
+.disposal-chip--scrapped {
+  --disposal-bg: #f3f4f6;
+  --disposal-border: #e5e7eb;
+  --disposal-text: #364153;
+}
+
+.access-panel {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  max-width: 520px;
+  padding: 24px;
+}
+
+.access-panel p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+  margin-top: 8px;
+}
+
+@media (max-width: 980px) {
+  .disposals-content {
+    padding: 20px;
+  }
+
+  .disposals-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .disposals-select {
+    width: 100%;
+  }
+}

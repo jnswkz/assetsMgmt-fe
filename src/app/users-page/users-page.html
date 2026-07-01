@@ -1,0 +1,237 @@
+<div class="users-page">
+  <header class="topbar">
+    <label class="search-box" for="users-global-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="users-global-search"
+        type="search"
+        placeholder="Search assets, users, requests..."
+        [value]="globalSearch()"
+        (input)="updateGlobalSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Toggle theme">
+        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <button class="profile-button" type="button" aria-label="Open user menu">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="profile-copy">
+          <span>{{ user().displayName }}</span>
+          <small>{{ user().department }}</small>
+        </span>
+        <mat-icon aria-hidden="true">expand_more</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <main class="users-content" aria-labelledby="users-title">
+    @if (canManage()) {
+      <section class="page-header">
+        <div>
+          <h1 id="users-title">Users</h1>
+          <p>Manage employees, managers, and IT administrators.</p>
+        </div>
+
+        <button class="primary-action new-user-button" type="button" (click)="openAddDialog()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          New user
+        </button>
+      </section>
+
+      <section class="toolbar users-toolbar" aria-label="User filters">
+        <label class="asset-search" for="users-search">
+          <mat-icon aria-hidden="true">search</mat-icon>
+          <input
+            id="users-search"
+            type="search"
+            placeholder="Search users..."
+            [value]="userSearch()"
+            (input)="updateUserSearch($event)"
+          />
+        </label>
+
+        <label class="select-button users-role-filter">
+          <span class="sr-only">Filter by role</span>
+          <select [value]="roleFilter()" (change)="updateRoleFilter($event)">
+            <option value="">All roles</option>
+            @for (role of roleOptions; track role) {
+              <option [value]="role">{{ role }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </label>
+
+        <label class="select-button users-department-filter">
+          <span class="sr-only">Filter by department</span>
+          <select [value]="departmentFilter()" (change)="updateDepartmentFilter($event)">
+            <option value="">All departments</option>
+            @for (department of departmentOptions(); track department) {
+              <option [value]="department">{{ department }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </label>
+
+        <label class="select-button users-status-filter">
+          <span class="sr-only">Filter by status</span>
+          <select [value]="statusFilter()" (change)="updateStatusFilter($event)">
+            <option value="">All</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </label>
+      </section>
+
+      <section class="users-card" aria-label="Users table">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Username</th>
+                <th scope="col">Full name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Employee code</th>
+                <th scope="col">Role</th>
+                <th scope="col">Department</th>
+                <th scope="col">Status</th>
+                <th class="actions-heading" scope="col">
+                  <span class="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (profile of filteredUsers(); track profile.username) {
+                <tr>
+                  <td class="username-cell">{{ profile.username }}</td>
+                  <td class="name-cell">{{ profile.fullName }}</td>
+                  <td class="muted-cell">{{ profile.email }}</td>
+                  <td class="muted-cell">{{ profile.employeeCode }}</td>
+                  <td>
+                    <span
+                      class="role-chip"
+                      [class.role-chip--admin]="profile.role === 'AdminIT'"
+                      [class.role-chip--manager]="profile.role === 'Manager'"
+                      [class.role-chip--employee]="profile.role === 'Employee'"
+                    >
+                      {{ profile.role }}
+                    </span>
+                  </td>
+                  <td>{{ profile.department }}</td>
+                  <td>
+                    <span class="user-status" [class.user-status--inactive]="profile.status === 'Inactive'">
+                      <span aria-hidden="true"></span>
+                      {{ profile.status }}
+                    </span>
+                  </td>
+                  <td class="row-actions">
+                    <div class="user-action">
+                      <button
+                        type="button"
+                        aria-label="User actions for {{ profile.fullName }}"
+                        [attr.aria-expanded]="openActionUsername() === profile.username"
+                        (click)="toggleActionMenu(profile.username)"
+                      >
+                        <mat-icon aria-hidden="true">more_horiz</mat-icon>
+                      </button>
+
+                      @if (openActionUsername() === profile.username) {
+                        <div class="action-menu" role="menu">
+                          <button type="button" role="menuitem" (click)="toggleUserStatus(profile)">
+                            {{ profile.status === 'Active' ? 'Deactivate' : 'Activate' }}
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="empty-row" colspan="8">No users match your filters.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    } @else {
+      <section class="access-panel" aria-labelledby="users-title">
+        <h1 id="users-title">Users</h1>
+        <p>Only AdminIT users can manage users.</p>
+      </section>
+    }
+
+    <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  </main>
+
+  @if (isAddDialogOpen()) {
+    <button class="dialog-backdrop" type="button" aria-label="Close new user dialog" (click)="closeAddDialog()"></button>
+    <section
+      class="user-dialog"
+      aria-labelledby="new-user-title"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+      cdkTrapFocus
+      cdkTrapFocusAutoCapture
+      (keydown.escape)="closeAddDialog()"
+    >
+      <header class="dialog-header">
+        <div>
+          <h2 id="new-user-title">New user</h2>
+          <p>Add a user before backend API integration.</p>
+        </div>
+        <button class="dialog-close" type="button" aria-label="Close new user dialog" (click)="closeAddDialog()">
+          <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+      </header>
+
+      <form class="user-form" (submit)="$event.preventDefault(); addUser()">
+        <label>
+          Username
+          <input type="text" autocomplete="username" [value]="usernameInput()" (input)="updateUsername($event)" />
+        </label>
+        <label>
+          Full name
+          <input type="text" autocomplete="name" [value]="fullNameInput()" (input)="updateFullName($event)" />
+        </label>
+        <label>
+          Email
+          <input type="email" autocomplete="email" [value]="emailInput()" (input)="updateEmail($event)" />
+        </label>
+        <label>
+          Employee code
+          <input type="text" autocomplete="off" [value]="employeeCodeInput()" (input)="updateEmployeeCode($event)" />
+        </label>
+        <label>
+          Role
+          <select [value]="roleInput()" (change)="updateRoleInput($event)">
+            @for (role of roleOptions; track role) {
+              <option [value]="role">{{ role }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Department
+          <input type="text" autocomplete="organization-title" [value]="departmentInput()" (input)="updateDepartmentInput($event)" />
+        </label>
+
+        @if (formError()) {
+          <p class="form-error">{{ formError() }}</p>
+        }
+
+        <div class="dialog-actions">
+          <button class="secondary-action" type="button" (click)="closeAddDialog()">Cancel</button>
+          <button class="primary-action" type="submit">Add user</button>
+        </div>
+      </form>
+    </section>
+  }
+</div>

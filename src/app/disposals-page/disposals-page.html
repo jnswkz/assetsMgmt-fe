@@ -1,0 +1,105 @@
+<div class="disposals-page">
+  <header class="topbar">
+    <label class="search-box" for="disposals-global-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="disposals-global-search"
+        type="search"
+        placeholder="Search assets, users, requests..."
+        [value]="globalSearch()"
+        (input)="updateGlobalSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Toggle theme">
+        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <button class="profile-button" type="button" aria-label="Open user menu">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="profile-copy">
+          <span>{{ user().displayName }}</span>
+          <small>{{ user().department }}</small>
+        </span>
+        <mat-icon aria-hidden="true">expand_more</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <main class="disposals-content" aria-labelledby="disposals-title">
+    @if (canView()) {
+      <section class="page-header">
+        <div>
+          <h1 id="disposals-title">Disposals</h1>
+          <p>Assets that have left active inventory.</p>
+        </div>
+      </section>
+
+      <section class="disposals-toolbar" aria-label="Disposal filters">
+        <label class="select-button disposals-select">
+          <span class="sr-only">Filter by disposal type</span>
+          <select [value]="typeFilter()" (change)="updateTypeFilter($event)">
+            <option value="">All types</option>
+            @for (type of typeOptions; track type) {
+              <option [value]="type">{{ type }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </label>
+      </section>
+
+      <section class="disposals-card" aria-label="Disposals table">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Asset</th>
+                <th scope="col">Type</th>
+                <th scope="col">Sold to</th>
+                <th class="numeric-cell" scope="col">Sale price</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Disposed</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (record of filteredDisposals(); track record.assetCode) {
+                <tr>
+                  <td class="asset-code-cell">{{ record.assetCode }}</td>
+                  <td>
+                    <span
+                      class="disposal-chip"
+                      [class.disposal-chip--sold]="record.type === 'Sold'"
+                      [class.disposal-chip--lost]="record.type === 'Lost'"
+                      [class.disposal-chip--donated]="record.type === 'Donated'"
+                      [class.disposal-chip--scrapped]="record.type === 'Scrapped'"
+                    >
+                      {{ record.type }}
+                    </span>
+                  </td>
+                  <td>{{ record.soldTo }}</td>
+                  <td class="numeric-cell">{{ record.salePrice }}</td>
+                  <td class="reason-cell">{{ record.reason }}</td>
+                  <td class="muted-cell">{{ record.disposed }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="empty-row" colspan="6">No disposals match your filters.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    } @else {
+      <section class="access-panel" aria-labelledby="disposals-title">
+        <h1 id="disposals-title">Disposals</h1>
+        <p>Only managers and AdminIT users can view disposals.</p>
+      </section>
+    }
+  </main>
+</div>
