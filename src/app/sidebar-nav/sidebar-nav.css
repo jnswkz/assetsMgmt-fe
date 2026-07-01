@@ -70,7 +70,7 @@
 }
 
 .brand__name {
-  color: #0a0a0a;
+  color: var(--sidebar-text);
   font-size: 16px;
   font-weight: 600;
   line-height: 20px;
@@ -172,4 +172,22 @@
 
 .nav-item--footer {
   font-size: 16px;
+}
+
+html[data-theme="dark"] .sidebar-nav {
+  --sidebar-primary: #8b7cf6;
+  --sidebar-primary-hover: #7c6cf0;
+  --sidebar-text: #f8fafc;
+  --sidebar-muted: #a1a1aa;
+  --sidebar-border: #2f3440;
+  --sidebar-bg: #111722;
+  --sidebar-focus: rgba(139, 124, 246, 0.36);
+}
+
+html[data-theme="dark"] .nav-item:hover {
+  background: #1b2030;
+}
+
+html[data-theme="dark"] .nav-item--active:hover {
+  background: var(--sidebar-primary-hover);
 }
