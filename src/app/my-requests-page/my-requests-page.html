@@ -1,0 +1,146 @@
+<div class="requests-page">
+  <header class="topbar">
+    <label class="search-box" for="requests-global-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="requests-global-search"
+        type="search"
+        placeholder="Search assets, users, requests..."
+        [value]="globalSearch()"
+        (input)="updateGlobalSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Toggle theme">
+        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <button class="profile-button" type="button" aria-label="Open user menu">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="profile-copy">
+          <span>{{ user().displayName }}</span>
+          <small>{{ user().department }}</small>
+        </span>
+        <mat-icon aria-hidden="true">expand_more</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <main class="requests-content" aria-labelledby="requests-title">
+    <section class="page-header">
+      <div>
+        <h1 id="requests-title">My requests</h1>
+        <p>Requests you've submitted across all assets.</p>
+      </div>
+    </section>
+
+    <section class="requests-card" aria-label="My requests table">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Asset code</th>
+              <th scope="col">Model</th>
+              <th scope="col">Status</th>
+              <th class="numeric-cell" scope="col">Duration</th>
+              <th scope="col">Submitted</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (request of filteredRequests(); track request.assetCode) {
+              <tr class="request-row" (click)="openRequestDetail(request)">
+                <td>
+                  <button type="button" aria-label="View request for {{ request.assetCode }}" (click)="openRequestDetail(request)">
+                    {{ request.assetCode }}
+                  </button>
+                </td>
+                <td>{{ request.model }}</td>
+                <td>
+                  <span
+                    class="request-status"
+                    [class.request-status--pending]="request.status === 'Pending'"
+                    [class.request-status--approved]="request.status === 'Approved'"
+                    [class.request-status--cancelled]="request.status === 'Cancelled'"
+                  >
+                    <span aria-hidden="true"></span>
+                    {{ request.status }}
+                  </span>
+                </td>
+                <td class="numeric-cell">{{ request.duration }}</td>
+                <td class="muted-cell">{{ request.submitted }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="empty-row" colspan="5">No requests match your search.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  @if (selectedRequest(); as request) {
+    <button class="drawer-backdrop" type="button" aria-label="Close request details" (click)="closeRequestDetail()"></button>
+    <aside
+      class="request-drawer"
+      aria-labelledby="request-detail-title"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+      cdkTrapFocus
+      cdkTrapFocusAutoCapture
+      (keydown.escape)="closeRequestDetail()"
+    >
+      <header class="drawer-header">
+        <div>
+          <h2 id="request-detail-title">{{ request.assetCode }} - {{ request.model }}</h2>
+          <p>Submitted {{ request.submitted }}</p>
+        </div>
+        <button class="drawer-close" type="button" aria-label="Close request details" (click)="closeRequestDetail()">
+          <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+      </header>
+
+      <section class="drawer-body">
+        <span
+          class="request-status request-status--large"
+          [class.request-status--pending]="request.status === 'Pending'"
+          [class.request-status--approved]="request.status === 'Approved'"
+          [class.request-status--cancelled]="request.status === 'Cancelled'"
+        >
+          <span aria-hidden="true"></span>
+          {{ request.status }}
+        </span>
+
+        <dl>
+          <div>
+            <dt>Reason</dt>
+            <dd>{{ request.reason }}</dd>
+          </div>
+          <div>
+            <dt>Expected duration</dt>
+            <dd>{{ request.expectedDuration }}</dd>
+          </div>
+          <div>
+            <dt>Approver</dt>
+            <dd>{{ request.approver }}</dd>
+          </div>
+          <div>
+            <dt>Decision reason</dt>
+            <dd>{{ request.decisionReason }}</dd>
+          </div>
+          <div>
+            <dt>Lock expires</dt>
+            <dd>{{ request.lockExpires }}</dd>
+          </div>
+        </dl>
+      </section>
+    </aside>
+  }
+</div>

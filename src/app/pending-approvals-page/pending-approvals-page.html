@@ -1,0 +1,119 @@
+<div class="approvals-page">
+  <header class="topbar">
+    <label class="search-box" for="approvals-global-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="approvals-global-search"
+        type="search"
+        placeholder="Search assets, users, requests..."
+        [value]="globalSearch()"
+        (input)="updateGlobalSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Toggle theme">
+        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <button class="profile-button" type="button" aria-label="Open user menu">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="profile-copy">
+          <span>{{ user().displayName }}</span>
+          <small>{{ user().department }}</small>
+        </span>
+        <mat-icon aria-hidden="true">expand_more</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <main class="approvals-content" aria-labelledby="approvals-title">
+    @if (canReview()) {
+      <section class="page-header">
+        <div>
+          <h1 id="approvals-title">Pending approvals</h1>
+          <p>Requests waiting on your decision.</p>
+        </div>
+        <p class="awaiting-count">{{ awaitingCount() }} awaiting</p>
+      </section>
+
+      <section class="approvals-card" aria-label="Pending approvals table">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Requester</th>
+                <th scope="col">Asset</th>
+                <th scope="col">Model</th>
+                <th scope="col">Reason</th>
+                <th class="numeric-cell" scope="col">Duration</th>
+                <th scope="col">Submitted</th>
+                <th scope="col">Lock</th>
+                <th class="actions-heading" scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (approval of filteredApprovals(); track approval.assetCode) {
+                <tr>
+                  <td class="requester-cell">{{ approval.requester }}</td>
+                  <td>{{ approval.assetCode }}</td>
+                  <td>{{ approval.model }}</td>
+                  <td class="reason-cell">{{ approval.reason }}</td>
+                  <td class="numeric-cell">{{ approval.duration }}</td>
+                  <td class="muted-cell">{{ approval.submitted }}</td>
+                  <td>
+                    @if (approval.lockExpires !== '-') {
+                      <span class="lock-date">
+                        <mat-icon aria-hidden="true">schedule</mat-icon>
+                        {{ approval.lockExpires }}
+                      </span>
+                    } @else {
+                      <span class="muted-cell">-</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="approval-actions">
+                      <button
+                        class="approve-button"
+                        type="button"
+                        aria-label="Approve request for {{ approval.assetCode }}"
+                        (click)="decide(approval, 'approved')"
+                      >
+                        <mat-icon aria-hidden="true">check</mat-icon>
+                        Approve
+                      </button>
+                      <button
+                        class="reject-button"
+                        type="button"
+                        aria-label="Reject request for {{ approval.assetCode }}"
+                        (click)="decide(approval, 'rejected')"
+                      >
+                        <mat-icon aria-hidden="true">close</mat-icon>
+                        Reject
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="empty-row" colspan="8">No approvals match your search.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    } @else {
+      <section class="access-panel" aria-labelledby="approvals-title">
+        <h1 id="approvals-title">Pending approvals</h1>
+        <p>Only managers and AdminIT users can review pending approvals.</p>
+      </section>
+    }
+
+    <p class="sr-only" aria-live="polite">{{ decisionMessage() }}</p>
+  </main>
+</div>

@@ -1,0 +1,75 @@
+<div class="my-assets-page">
+  <header class="topbar">
+    <label class="search-box" for="my-assets-global-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="my-assets-global-search"
+        type="search"
+        placeholder="Search assets, users, requests..."
+        [value]="globalSearch()"
+        (input)="updateGlobalSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" aria-label="Toggle theme">
+        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <button class="profile-button" type="button" aria-label="Open user menu">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="profile-copy">
+          <span>{{ user().displayName }}</span>
+          <small>{{ user().department }}</small>
+        </span>
+        <mat-icon aria-hidden="true">expand_more</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <main class="my-assets-content" aria-labelledby="my-assets-title">
+    <section class="page-header">
+      <div>
+        <h1 id="my-assets-title">My assets</h1>
+        <p>Hardware currently assigned to you.</p>
+      </div>
+    </section>
+
+    <section class="assigned-grid" aria-label="Assigned assets">
+      @for (asset of filteredAssignedAssets(); track asset.code) {
+        <article class="asset-card">
+          <header class="asset-card__header">
+            <div>
+              <small>{{ asset.code }}</small>
+              <h2>{{ asset.model }}</h2>
+            </div>
+
+            <span class="status-chip status-chip--allocated">
+              <span aria-hidden="true"></span>
+              {{ asset.status }}
+            </span>
+          </header>
+
+          <dl class="asset-meta">
+            <div>
+              <dt>Location</dt>
+              <dd>{{ asset.location }}</dd>
+            </div>
+            <div>
+              <dt>Assigned since</dt>
+              <dd>{{ asset.assignedSince }}</dd>
+            </div>
+          </dl>
+        </article>
+      } @empty {
+        <article class="asset-card">
+          <p>No assigned assets match your search.</p>
+        </article>
+      }
+    </section>
+  </main>
+</div>
