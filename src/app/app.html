@@ -6,7 +6,7 @@
       <app-sidebar-nav [role]="auth.role()"></app-sidebar-nav>
     </mat-sidenav>
 
-    <mat-sidenav-content class="app-content">
+    <mat-sidenav-content class="app-content" (click)="toggleThemeFromTopbar($event)">
       <router-outlet></router-outlet>
     </mat-sidenav-content>
   </mat-sidenav-container>

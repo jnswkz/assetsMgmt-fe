@@ -1,4 +1,5 @@
 .app-shell {
+  background: var(--app-bg, #ffffff);
   min-height: 100vh;
   width: 100%;
 }
@@ -8,5 +9,6 @@
 }
 
 .app-content {
+  background: var(--app-bg, #ffffff);
   min-height: 100vh;
 }

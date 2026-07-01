@@ -36,4 +36,19 @@ describe('DashboardPage', () => {
     expect(compiled.textContent).toContain('Pending Requests');
     expect(compiled.textContent).toContain('Requests awaiting approval');
   });
+
+  it('should filter requests and activity from the top search', () => {
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const search = compiled.querySelector<HTMLInputElement>('#dashboard-search');
+    search!.value = 'Logitech';
+    search!.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(compiled.querySelectorAll('.request-row').length).toBe(1);
+    expect(compiled.querySelectorAll('.activity-list article').length).toBe(1);
+    expect(compiled.textContent).toContain('AH-0017');
+    expect(compiled.textContent).not.toContain('AH-0007');
+  });
 });

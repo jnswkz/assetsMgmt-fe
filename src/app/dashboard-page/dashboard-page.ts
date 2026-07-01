@@ -1,8 +1,9 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../services/auth.service';
 import { Role } from '../models/nav-item';
+import { controlValue, matchesSearch } from '../utils/search';
 
 interface StatCard {
   readonly label: string;
@@ -125,6 +126,7 @@ export class DashboardPage {
   private readonly auth = inject(AuthService);
 
   protected readonly user = this.auth.currentUser;
+  protected readonly globalSearch = signal('');
   protected readonly statusSlices = STATUS_SLICES;
   protected readonly categoryBars = CATEGORY_BARS;
   protected readonly donutBackground = buildDonutBackground(STATUS_SLICES);
@@ -142,6 +144,28 @@ export class DashboardPage {
       activities: ACTIVITIES,
     };
   });
+  protected readonly filteredRequests = computed(() =>
+    this.view().requests.filter(request =>
+      matchesSearch(this.globalSearch(), [
+        request.id,
+        request.asset,
+        request.details,
+        request.status,
+      ])
+    )
+  );
+  protected readonly filteredActivities = computed(() =>
+    this.view().activities.filter(activity =>
+      matchesSearch(this.globalSearch(), [
+        activity.message,
+        activity.time,
+      ])
+    )
+  );
+
+  protected updateGlobalSearch(event: Event): void {
+    this.globalSearch.set(controlValue(event));
+  }
 
   protected barHeight(value: number): string {
     return `${(value / this.maxCategoryValue) * 100}%`;

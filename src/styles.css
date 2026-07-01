@@ -2,3 +2,734 @@
 
 @import 'tailwindcss';
 
+html {
+  color-scheme: light;
+  --app-bg: #ffffff;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --app-bg: #0f1117;
+}
+
+body {
+  background: var(--app-bg);
+}
+
+.dashboard-page,
+.assets-page,
+.catalog-page,
+.my-assets-page,
+.requests-page,
+.approvals-page,
+.history-page,
+.disposals-page,
+.departments-page,
+.users-page {
+  --primary: #4f39f6;
+  --primary-hover: #432ddf;
+  --text: #0a0a0a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --soft: #f4f4f5;
+  --surface: #ffffff;
+  --panel: #ffffff;
+  --control-bg: #ffffff;
+  --option-bg: #ffffff;
+  --option-text: #0a0a0a;
+  --focus: rgba(79, 57, 246, 0.24);
+
+  background: var(--surface);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+html[data-theme="dark"] .dashboard-page,
+html[data-theme="dark"] .assets-page,
+html[data-theme="dark"] .catalog-page,
+html[data-theme="dark"] .my-assets-page,
+html[data-theme="dark"] .requests-page,
+html[data-theme="dark"] .approvals-page,
+html[data-theme="dark"] .history-page,
+html[data-theme="dark"] .disposals-page,
+html[data-theme="dark"] .departments-page,
+html[data-theme="dark"] .users-page {
+  --primary: #8b7cf6;
+  --primary-hover: #7c6cf0;
+  --text: #f8fafc;
+  --muted: #a1a1aa;
+  --border: #2f3440;
+  --soft: #1b2030;
+  --surface: #0f1117;
+  --panel: #151a24;
+  --control-bg: #1b2030;
+  --option-bg: #151a24;
+  --option-text: #f8fafc;
+  --focus: rgba(139, 124, 246, 0.36);
+}
+
+.dashboard-page,
+.dashboard-page *,
+.assets-page,
+.assets-page *,
+.catalog-page,
+.catalog-page *,
+.my-assets-page,
+.my-assets-page *,
+.requests-page,
+.requests-page *,
+.approvals-page,
+.approvals-page *,
+.history-page,
+.history-page *,
+.disposals-page,
+.disposals-page *,
+.departments-page,
+.departments-page *,
+.users-page,
+.users-page * {
+  box-sizing: border-box;
+}
+
+.topbar,
+.topbar-actions,
+.profile-button,
+.page-header,
+.primary-action,
+.primary-link,
+.toolbar,
+.search-box,
+.asset-search,
+.model-search,
+.select-button,
+.row-actions,
+.status-chip,
+.table-footer,
+.pagination {
+  align-items: center;
+  display: flex;
+}
+
+.topbar {
+  border-bottom: 1px solid var(--border);
+  gap: 24px;
+  height: 64px;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+.dashboard-page .topbar,
+.catalog-page .topbar {
+  padding-right: 32px;
+}
+
+.search-box,
+.asset-search,
+.model-search {
+  background: var(--soft);
+  border-radius: 8px;
+  color: var(--muted);
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px 0 12px;
+}
+
+.search-box {
+  max-width: 448px;
+  width: min(38vw, 448px);
+}
+
+.asset-search,
+.model-search {
+  width: 384px;
+}
+
+.search-box mat-icon,
+.asset-search mat-icon,
+.model-search mat-icon {
+  font-size: 16px;
+  height: 16px;
+  width: 16px;
+}
+
+.dashboard-page input,
+.assets-page input,
+.catalog-page input,
+.my-assets-page input,
+.requests-page input,
+.approvals-page input,
+.history-page input,
+.disposals-page input,
+.departments-page input,
+.users-page input {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  flex: 1;
+  font: inherit;
+  font-size: 14px;
+  min-width: 0;
+  outline: 0;
+}
+
+.search-box span {
+  border: 1px solid #d4d4d8;
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 20px;
+  padding: 0 6px;
+}
+
+.topbar-actions {
+  gap: 6px;
+}
+
+.dashboard-page button,
+.dashboard-page a,
+.assets-page button,
+.catalog-page button,
+.my-assets-page button,
+.requests-page button,
+.approvals-page button,
+.history-page button,
+.disposals-page button,
+.departments-page button,
+.users-page button {
+  font: inherit;
+}
+
+.icon-button,
+.profile-button,
+.toggle-button,
+.row-actions button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.icon-button,
+.toggle-button,
+.row-actions button {
+  border-radius: 8px;
+  height: 36px;
+  position: relative;
+  width: 36px;
+}
+
+.icon-button mat-icon,
+.toggle-button mat-icon,
+.row-actions mat-icon,
+.primary-action mat-icon {
+  font-size: 18px;
+  height: 18px;
+  width: 18px;
+}
+
+.icon-button--notify::after {
+  background: #ff3547;
+  border-radius: 50%;
+  content: "";
+  height: 8px;
+  position: absolute;
+  right: 7px;
+  top: 6px;
+  width: 8px;
+}
+
+.profile-button {
+  gap: 8px;
+  padding-left: 6px;
+}
+
+.avatar {
+  align-items: center;
+  background: var(--primary);
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  flex: 0 0 28px;
+  font-size: 12px;
+  font-weight: 600;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.profile-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.profile-copy span {
+  font-size: 14px;
+}
+
+.profile-copy small,
+.page-header p,
+.asset-card small,
+dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.page-header {
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.dashboard-page h1,
+.dashboard-page h2,
+.dashboard-page p,
+.assets-page h1,
+.assets-page h2,
+.assets-page p,
+.catalog-page h1,
+.catalog-page p,
+.my-assets-page h1,
+.my-assets-page h2,
+.my-assets-page p,
+.my-assets-page dl,
+.my-assets-page dd,
+.requests-page h1,
+.requests-page h2,
+.requests-page p,
+.approvals-page h1,
+.approvals-page h2,
+.approvals-page p,
+.history-page h1,
+.history-page h2,
+.history-page p,
+.disposals-page h1,
+.disposals-page h2,
+.disposals-page p,
+.departments-page h1,
+.departments-page h2,
+.departments-page p,
+.users-page h1,
+.users-page h2,
+.users-page p {
+  margin: 0;
+}
+
+.dashboard-page h1,
+.assets-page h1,
+.catalog-page h1,
+.my-assets-page h1,
+.requests-page h1,
+.approvals-page h1,
+.history-page h1,
+.disposals-page h1,
+.departments-page h1,
+.users-page h1 {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.page-header p {
+  font-size: 14px;
+  line-height: 20px;
+  margin-top: 8px;
+}
+
+.primary-action,
+.primary-link {
+  background: var(--primary);
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  gap: 8px;
+  height: 36px;
+  padding: 8px 12px;
+  text-decoration: none;
+}
+
+.primary-action:hover,
+.primary-link:hover {
+  background: var(--primary-hover);
+}
+
+.toolbar {
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.select-button {
+  background: var(--control-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  height: 36px;
+  justify-content: space-between;
+  padding: 0 12px;
+}
+
+.select-button select {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  flex: 1;
+  font: inherit;
+  min-width: 0;
+  outline: 0;
+}
+
+.select-button option,
+.user-form option {
+  background: var(--option-bg);
+  color: var(--option-text);
+}
+
+.select-button mat-icon {
+  font-size: 18px;
+  height: 18px;
+  pointer-events: none;
+  width: 18px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.assets-page table,
+.catalog-page table,
+.requests-page table,
+.approvals-page table,
+.history-page table,
+.disposals-page table,
+.departments-page table,
+.users-page table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.assets-page table {
+  min-width: 1060px;
+}
+
+.catalog-page table {
+  min-width: 980px;
+}
+
+.assets-page tr,
+.catalog-page tr,
+.requests-page tr,
+.approvals-page tr,
+.history-page tr,
+.disposals-page tr,
+.departments-page tr,
+.users-page tr {
+  border-bottom: 1px solid var(--border);
+}
+
+.catalog-page tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.assets-page th,
+.assets-page td,
+.catalog-page th,
+.catalog-page td,
+.requests-page th,
+.requests-page td,
+.approvals-page th,
+.approvals-page td,
+.history-page th,
+.history-page td,
+.disposals-page th,
+.disposals-page td,
+.departments-page th,
+.departments-page td,
+.users-page th,
+.users-page td {
+  font-size: 14px;
+  height: 49px;
+  line-height: 20px;
+  padding: 0 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.assets-page th,
+.catalog-page th,
+.requests-page th,
+.approvals-page th,
+.history-page th,
+.disposals-page th,
+.departments-page th,
+.users-page th {
+  color: var(--muted);
+  font-weight: 500;
+  height: 40px;
+}
+
+.row-actions {
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.row-actions button:hover,
+.icon-button:hover,
+.toggle-button:hover,
+.back-button:hover,
+.tab:hover {
+  background: var(--soft);
+}
+
+.empty-row {
+  color: var(--muted);
+  text-align: center;
+}
+
+.table-footer {
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 14px;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 12px 16px;
+}
+
+.pagination {
+  gap: 4px;
+}
+
+.pagination button {
+  background: var(--control-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  height: 32px;
+  padding: 0 12px;
+}
+
+.pagination button:hover {
+  background: var(--soft);
+}
+
+.status-chip {
+  background: var(--chip-bg);
+  border-radius: 999px;
+  color: var(--chip-text);
+  gap: 6px;
+  line-height: 26px;
+  padding: 0 9px;
+  width: max-content;
+}
+
+.status-chip span {
+  background: var(--chip-dot);
+  border-radius: 50%;
+  height: 6px;
+  width: 6px;
+}
+
+.status-chip--allocated {
+  --chip-bg: #eff6ff;
+  --chip-dot: #3b82f6;
+  --chip-text: #1d4ed8;
+}
+
+.status-chip--instock {
+  --chip-bg: #ecfdf5;
+  --chip-dot: #10b981;
+  --chip-text: #047857;
+}
+
+.status-chip--maintenance {
+  --chip-bg: #fff7ed;
+  --chip-dot: #f97316;
+  --chip-text: #c2410c;
+}
+
+.status-chip--locked {
+  --chip-bg: #fffbeb;
+  --chip-dot: #f59e0b;
+  --chip-text: #b45309;
+}
+
+.status-chip--retired {
+  --chip-bg: #f4f4f5;
+  --chip-dot: #a1a1aa;
+  --chip-text: #52525b;
+}
+
+.status-chip--lost {
+  --chip-bg: #fef2f2;
+  --chip-dot: #ef4444;
+  --chip-text: #b91c1c;
+}
+
+.status-chip--disposed {
+  --chip-bg: #f3f4f6;
+  --chip-dot: #1f2937;
+  --chip-text: #1f2937;
+}
+
+.status-badge {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  padding: 4px 10px;
+}
+
+.status-badge--pending { background: #fffbeb; color: #d97706; }
+.status-badge--locked { background: #faf5ff; color: #9333ea; }
+.status-badge--approved { background: #ecfdf5; color: #059669; }
+.status-badge--cancelled { background: #f8fafc; color: #475569; }
+
+.sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+}
+
+.dashboard-page button:focus-visible,
+.dashboard-page a:focus-visible,
+.dashboard-page input:focus-visible,
+.assets-page button:focus-visible,
+.assets-page input:focus-visible,
+.catalog-page button:focus-visible,
+.catalog-page input:focus-visible,
+.my-assets-page button:focus-visible,
+.my-assets-page input:focus-visible,
+.requests-page button:focus-visible,
+.requests-page input:focus-visible,
+.approvals-page button:focus-visible,
+.approvals-page input:focus-visible,
+.history-page button:focus-visible,
+.history-page input:focus-visible,
+.disposals-page button:focus-visible,
+.disposals-page input:focus-visible,
+.departments-page button:focus-visible,
+.departments-page input:focus-visible,
+.users-page button:focus-visible,
+.users-page input:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+@media (max-width: 980px) {
+  .topbar,
+  .page-header,
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topbar {
+    height: auto;
+    padding: 16px;
+  }
+
+  .search-box,
+  .asset-search,
+  .model-search,
+  .select-button {
+    width: 100%;
+  }
+
+  .view-toggle {
+    margin-left: 0;
+  }
+
+  .table-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+html[data-theme="dark"] .app-shell,
+html[data-theme="dark"] .app-content,
+html[data-theme="dark"] .mat-drawer-container,
+html[data-theme="dark"] .mat-drawer-content,
+html[data-theme="dark"] .mat-drawer {
+  background: var(--app-bg);
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .topbar {
+  background: var(--surface);
+  border-bottom-color: var(--border);
+}
+
+html[data-theme="dark"] .icon-button,
+html[data-theme="dark"] .profile-button,
+html[data-theme="dark"] .toggle-button,
+html[data-theme="dark"] .row-actions button,
+html[data-theme="dark"] .back-button,
+html[data-theme="dark"] .tab,
+html[data-theme="dark"] .dialog-close,
+html[data-theme="dark"] .drawer-close {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .assets-card,
+html[data-theme="dark"] .detail-summary,
+html[data-theme="dark"] .tab-panel,
+html[data-theme="dark"] .catalog-card,
+html[data-theme="dark"] .requests-card,
+html[data-theme="dark"] .approvals-card,
+html[data-theme="dark"] .history-card,
+html[data-theme="dark"] .disposals-card,
+html[data-theme="dark"] .departments-card,
+html[data-theme="dark"] .users-card,
+html[data-theme="dark"] .access-panel,
+html[data-theme="dark"] .department-dialog,
+html[data-theme="dark"] .user-dialog,
+html[data-theme="dark"] .request-drawer,
+html[data-theme="dark"] .action-menu {
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+html[data-theme="dark"] tr {
+  border-bottom-color: var(--border);
+}
+
+html[data-theme="dark"] .request-row:hover,
+html[data-theme="dark"] .row-actions button:hover,
+html[data-theme="dark"] .icon-button:hover,
+html[data-theme="dark"] .toggle-button:hover,
+html[data-theme="dark"] .back-button:hover,
+html[data-theme="dark"] .tab:hover,
+html[data-theme="dark"] .dialog-close:hover,
+html[data-theme="dark"] .drawer-close:hover,
+html[data-theme="dark"] .action-menu button:hover {
+  background: var(--soft);
+}
+
+html[data-theme="dark"] .badge,
+html[data-theme="dark"] .asset-id {
+  background: var(--soft);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .donut span,
+html[data-theme="dark"] .action-button,
+html[data-theme="dark"] .reject-button,
+html[data-theme="dark"] .secondary-action,
+html[data-theme="dark"] .department-form input,
+html[data-theme="dark"] .user-form input,
+html[data-theme="dark"] .user-form select {
+  background: var(--control-bg);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .search-box span {
+  border-color: #3f4655;
+}
