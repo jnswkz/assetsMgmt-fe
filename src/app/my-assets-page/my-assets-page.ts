@@ -58,7 +58,7 @@ export class MyAssetsPage {
   }
 
   protected downloadHandover(asset: AssignedAsset): void {
-    if (!asset.handoverDocumentNumber || this.downloadingAssetId()) {
+    if (this.downloadingAssetId()) {
       return;
     }
 
@@ -68,12 +68,13 @@ export class MyAssetsPage {
 
     this.allocations.downloadHandover(asset.id).subscribe({
       next: file => {
-        triggerDownload(file, `${asset.handoverDocumentNumber}.pdf`);
-        this.statusMessage.set(`Downloaded ${asset.handoverDocumentNumber}.`);
+        const fileName = handoverFileName(asset);
+        triggerDownload(file, fileName);
+        this.statusMessage.set(`Downloaded ${fileName}.`);
         this.downloadingAssetId.set(null);
       },
       error: () => {
-        this.errorMessage.set('Unable to download the handover document.');
+        this.errorMessage.set('Handover document is not available for this asset yet.');
         this.downloadingAssetId.set(null);
       },
     });
@@ -105,6 +106,16 @@ function toAssignedAsset(item: MyAssetItem): AssignedAsset {
     assignedSince: (item.startDate ?? '').slice(0, 10) || '-',
     handoverDocumentNumber: item.handoverDocumentNumber ?? null,
   };
+}
+
+function handoverFileName(asset: AssignedAsset): string {
+  const documentName = asset.handoverDocumentNumber?.trim();
+  if (documentName) {
+    return `${documentName}.pdf`;
+  }
+
+  const code = asset.code === '-' ? asset.id : asset.code;
+  return `handover-${code}.pdf`;
 }
 
 function triggerDownload(file: Blob, fileName: string): void {

@@ -35,6 +35,11 @@ export interface ModelQuery {
   readonly pageSize: number;
 }
 
+export interface PageQuery {
+  readonly page?: number;
+  readonly pageSize?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AssetsService {
   private readonly api = inject(ApiService);
@@ -102,17 +107,17 @@ export class AssetsService {
     return this.api.delete<void>(`/api/asset-models/${id}`);
   }
 
-  history(assetId: string): Observable<PagedResult<AllocationHistoryItem>> {
+  history(assetId: string, query: PageQuery = {}): Observable<PagedResult<AllocationHistoryItem>> {
     return this.api.get<PagedResult<AllocationHistoryItem>>(`/api/assets/${assetId}/history`, {
-      page: 1,
-      pageSize: 1,
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 50,
     });
   }
 
-  maintenance(assetId: string): Observable<PagedResult<MaintenanceRecordDto>> {
+  maintenance(assetId: string, query: PageQuery = {}): Observable<PagedResult<MaintenanceRecordDto>> {
     return this.api.get<PagedResult<MaintenanceRecordDto>>(`/api/assets/${assetId}/maintenance`, {
-      page: 1,
-      pageSize: 1,
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 50,
     });
   }
 

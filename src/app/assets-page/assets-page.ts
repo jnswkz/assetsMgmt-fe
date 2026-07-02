@@ -10,10 +10,12 @@ import { UsersService } from '../services/users.service';
 import { controlValue, matchesSearch } from '../utils/search';
 import { environment } from '../../environments/environment';
 import {
+  AllocationHistoryItem,
   AssetInstanceDto,
   AssetInstanceListItem,
   AssetModelListItem,
   CreateAssetInstanceRequest,
+  MaintenanceRecordDto,
   PagedResult,
   UserListItem,
 } from '../models/api.model';
@@ -24,6 +26,8 @@ import {
   DisposalTypeLabel,
   assetStatusLabel,
   assetStatusValue,
+  depreciationMethodLabel,
+  maintenanceStatusLabel,
 } from '../models/enums';
 
 interface AssetRow {
@@ -55,9 +59,46 @@ interface AssetDetailView {
   readonly notes: string;
   readonly specs: string;
   readonly usefulLife: string;
+  readonly depreciationMethod: string;
   readonly maintenanceRecords: number;
   readonly allocationEvents: number;
+  readonly allocationHistory: readonly AssetAllocationHistoryView[];
+  readonly maintenanceHistory: readonly AssetMaintenanceHistoryView[];
+  readonly depreciation: AssetDepreciationView;
 }
+
+interface AssetAllocationHistoryView {
+  readonly event: string;
+  readonly user: string;
+  readonly start: string;
+  readonly end: string;
+  readonly notes: string;
+}
+
+interface AssetMaintenanceHistoryView {
+  readonly type: string;
+  readonly status: string;
+  readonly description: string;
+  readonly vendor: string;
+  readonly start: string;
+  readonly end: string;
+  readonly cost: string;
+  readonly notes: string;
+}
+
+interface AssetDepreciationView {
+  readonly method: string;
+  readonly usefulLife: string;
+  readonly acquisitionCost: string;
+  readonly salvageValue: string;
+  readonly depreciableBase: string;
+  readonly monthlyDepreciation: string;
+  readonly annualDepreciation: string;
+  readonly estimatedBookValue: string;
+  readonly remainingLife: string;
+}
+
+type AssetDetailTab = 'overview' | 'history' | 'maintenance' | 'depreciation';
 
 type ActionMode = 'return' | 'transfer' | 'maintenance' | 'dispose';
 
@@ -123,6 +164,7 @@ export class AssetsPage {
   );
 
   protected readonly selectedAsset = signal<AssetDetailView | null>(null);
+  protected readonly selectedDetailTab = signal<AssetDetailTab>('overview');
 
   // Inline mutation panel state
   protected readonly actionMode = signal<ActionMode | null>(null);
@@ -244,48 +286,14 @@ export class AssetsPage {
   }
 
   protected openAssetDetail(asset: AssetRow): void {
+    this.selectedDetailTab.set('overview');
     this.closeActionPanel();
-    // Employees/Managers are 403'd on the maintenance list, so only AdminIT
-    // requests it; everyone gets history. Each sub-call is error-tolerant so a
-    // single failure doesn't blank the whole detail view.
-    const zeroPage: PagedResult<never> = { items: [], total: 0, page: 1, pageSize: 1, totalPages: 0 };
-    forkJoin({
-      detail: this.assetsApi.get(asset.id),
-      history: this.assetsApi.history(asset.id).pipe(catchError(() => of(zeroPage))),
-      maintenance: this.canAdminAssets()
-        ? this.assetsApi.maintenance(asset.id).pipe(catchError(() => of(zeroPage)))
-        : of(zeroPage),
-    }).subscribe({
-      next: ({ detail, history, maintenance }) => {
-        this.assetsApi.model(detail.modelId).subscribe({
-          next: model =>
-            this.selectedAsset.set(
-              toDetail(detail, {
-                manufacturer: model.manufacturer ?? '-',
-                specs: model.specs ?? '-',
-                usefulLifeMonths: model.defaultUsefulLifeMonths,
-                allocationEvents: history.total,
-                maintenanceRecords: maintenance.total,
-              })
-            ),
-          error: () =>
-            this.selectedAsset.set(
-              toDetail(detail, {
-                manufacturer: '-',
-                specs: '-',
-                usefulLifeMonths: 0,
-                allocationEvents: history.total,
-                maintenanceRecords: maintenance.total,
-              })
-            ),
-        });
-      },
-      error: () => this.errorMessage.set('Unable to load asset detail.'),
-    });
+    this.loadAssetDetail(asset.id);
   }
 
   protected closeAssetDetail(): void {
     this.selectedAsset.set(null);
+    this.selectedDetailTab.set('overview');
     this.closeActionPanel();
   }
 
@@ -385,18 +393,61 @@ export class AssetsPage {
   }
 
   private refreshDetail(id: string): void {
-    const current = this.selectedAsset();
-    this.assetsApi.get(id).subscribe(detail =>
-      this.selectedAsset.set(
-        toDetail(detail, {
-          manufacturer: current?.manufacturer ?? '-',
-          specs: current?.specs ?? '-',
-          usefulLifeMonths: 0,
-          allocationEvents: current?.allocationEvents ?? 0,
-          maintenanceRecords: current?.maintenanceRecords ?? 0,
-        })
-      )
-    );
+    this.loadAssetDetail(id);
+  }
+
+  protected setDetailTab(tab: AssetDetailTab): void {
+    this.selectedDetailTab.set(tab);
+  }
+
+  private loadAssetDetail(id: string): void {
+    const zeroPage: PagedResult<never> = {
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 50,
+      totalPages: 0,
+    };
+
+    forkJoin({
+      detail: this.assetsApi.get(id),
+      history: this.assetsApi.history(id, { page: 1, pageSize: 50 }).pipe(catchError(() => of(zeroPage))),
+      maintenance: this.canAdminAssets()
+        ? this.assetsApi.maintenance(id, { page: 1, pageSize: 50 }).pipe(catchError(() => of(zeroPage)))
+        : of(zeroPage),
+    }).subscribe({
+      next: ({ detail, history, maintenance }) => {
+        this.assetsApi.model(detail.modelId).subscribe({
+          next: model =>
+            this.selectedAsset.set(
+              toDetail(detail, {
+                manufacturer: model.manufacturer ?? '-',
+                specs: model.specs ?? '-',
+                usefulLifeMonths: model.defaultUsefulLifeMonths,
+                depreciationMethod: depreciationMethodLabel(model.defaultDepreciationMethod),
+                allocationEvents: history.total,
+                maintenanceRecords: maintenance.total,
+                allocationHistory: history.items.map(toAllocationHistoryItem),
+                maintenanceHistory: maintenance.items.map(toMaintenanceHistoryItem),
+              })
+            ),
+          error: () =>
+            this.selectedAsset.set(
+              toDetail(detail, {
+                manufacturer: '-',
+                specs: '-',
+                usefulLifeMonths: 0,
+                depreciationMethod: '-',
+                allocationEvents: history.total,
+                maintenanceRecords: maintenance.total,
+                allocationHistory: history.items.map(toAllocationHistoryItem),
+                maintenanceHistory: maintenance.items.map(toMaintenanceHistoryItem),
+              })
+            ),
+        });
+      },
+      error: () => this.errorMessage.set('Unable to load asset detail.'),
+    });
   }
 
   // --- Instance CRUD (AdminIT only) ---
@@ -584,10 +635,21 @@ function toDetail(
     manufacturer: string;
     specs: string;
     usefulLifeMonths: number;
+    depreciationMethod: string;
     allocationEvents: number;
     maintenanceRecords: number;
+    allocationHistory: readonly AssetAllocationHistoryView[];
+    maintenanceHistory: readonly AssetMaintenanceHistoryView[];
   }
 ): AssetDetailView {
+  const depreciation = toDepreciationView(
+    dto.acquisitionCost,
+    dto.salvageValue,
+    dto.acquisitionDate,
+    extra.usefulLifeMonths,
+    extra.depreciationMethod
+  );
+
   return {
     id: dto.id,
     asset: {
@@ -607,9 +669,74 @@ function toDetail(
     notes: dto.notes ?? '-',
     specs: extra.specs,
     usefulLife: extra.usefulLifeMonths ? `${extra.usefulLifeMonths} months` : '-',
+    depreciationMethod: extra.depreciationMethod,
     maintenanceRecords: extra.maintenanceRecords,
     allocationEvents: extra.allocationEvents,
+    allocationHistory: extra.allocationHistory,
+    maintenanceHistory: extra.maintenanceHistory,
+    depreciation,
   };
+}
+
+function toAllocationHistoryItem(item: AllocationHistoryItem): AssetAllocationHistoryView {
+  return {
+    event: allocationEventLabel(item.eventType),
+    user: item.userName ?? '-',
+    start: formatDate(item.startDate),
+    end: formatDate(item.endDate),
+    notes: item.notes ?? '-',
+  };
+}
+
+function toMaintenanceHistoryItem(item: MaintenanceRecordDto): AssetMaintenanceHistoryView {
+  return {
+    type: MAINTENANCE_TYPE[item.maintenanceType] ?? 'Other',
+    status: maintenanceStatusLabel(item.status),
+    description: item.description ?? '-',
+    vendor: item.vendor ?? '-',
+    start: formatDate(item.startDate),
+    end: formatDate(item.endDate),
+    cost: formatCurrency(item.cost),
+    notes: item.notes ?? item.description ?? '-',
+  };
+}
+
+function toDepreciationView(
+  acquisitionCost: number,
+  salvageValue: number,
+  acquisitionDate: string,
+  usefulLifeMonths: number,
+  depreciationMethod: string
+): AssetDepreciationView {
+  const depreciableBase = Math.max(acquisitionCost - salvageValue, 0);
+  const elapsedMonths = monthsSince(acquisitionDate);
+  const monthlyDepreciation =
+    usefulLifeMonths > 0 && depreciationMethod === 'Straight line'
+      ? depreciableBase / usefulLifeMonths
+      : null;
+  const annualDepreciation = monthlyDepreciation === null ? null : monthlyDepreciation * 12;
+  const estimatedBookValue =
+    monthlyDepreciation === null
+      ? null
+      : Math.max(acquisitionCost - Math.min(elapsedMonths, usefulLifeMonths) * monthlyDepreciation, salvageValue);
+  const remainingLifeMonths =
+    usefulLifeMonths > 0 ? Math.max(usefulLifeMonths - Math.min(elapsedMonths, usefulLifeMonths), 0) : null;
+
+  return {
+    method: depreciationMethod,
+    usefulLife: usefulLifeMonths ? `${usefulLifeMonths} months` : '-',
+    acquisitionCost: formatCurrency(acquisitionCost),
+    salvageValue: formatCurrency(salvageValue),
+    depreciableBase: formatCurrency(depreciableBase),
+    monthlyDepreciation: monthlyDepreciation === null ? 'Unavailable' : formatCurrency(monthlyDepreciation),
+    annualDepreciation: annualDepreciation === null ? 'Unavailable' : formatCurrency(annualDepreciation),
+    estimatedBookValue: estimatedBookValue === null ? 'Unavailable' : formatCurrency(estimatedBookValue),
+    remainingLife: remainingLifeMonths === null ? '-' : `${remainingLifeMonths} months`,
+  };
+}
+
+function allocationEventLabel(value: number): string {
+  return (['Allocated', 'Transferred', 'Returned'] as const)[value] ?? 'Allocated';
 }
 
 function toAssetUrl(pathOrUrl: string | null | undefined): string | null {
@@ -635,6 +762,23 @@ function formatDate(value: string | null): string {
     return '-';
   }
   return value.slice(0, 10);
+}
+
+function monthsSince(value: string): number {
+  if (!value) {
+    return 0;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 0;
+  }
+
+  const now = new Date();
+  let months = (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth());
+  if (now.getDate() < date.getDate()) {
+    months -= 1;
+  }
+  return Math.max(months, 0);
 }
 
 function numberOrNull(value: string): number | null {

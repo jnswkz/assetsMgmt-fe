@@ -213,40 +213,175 @@
 
         <section class="detail-tabs" aria-label="Asset detail sections">
           <div class="tab-list" role="tablist" aria-label="Asset information">
-            <button class="tab tab--active" type="button" role="tab" aria-selected="true">Overview</button>
-            <button class="tab" type="button" role="tab" aria-selected="false">Allocation history</button>
-            <button class="tab" type="button" role="tab" aria-selected="false">Maintenance</button>
-            <button class="tab" type="button" role="tab" aria-selected="false">Depreciation</button>
+            <button
+              class="tab"
+              [class.tab--active]="selectedDetailTab() === 'overview'"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="selectedDetailTab() === 'overview'"
+              (click)="setDetailTab('overview')"
+            >
+              Overview
+            </button>
+            <button
+              class="tab"
+              [class.tab--active]="selectedDetailTab() === 'history'"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="selectedDetailTab() === 'history'"
+              (click)="setDetailTab('history')"
+            >
+              Allocation history
+            </button>
+            <button
+              class="tab"
+              [class.tab--active]="selectedDetailTab() === 'maintenance'"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="selectedDetailTab() === 'maintenance'"
+              (click)="setDetailTab('maintenance')"
+            >
+              Maintenance
+            </button>
+            <button
+              class="tab"
+              [class.tab--active]="selectedDetailTab() === 'depreciation'"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="selectedDetailTab() === 'depreciation'"
+              (click)="setDetailTab('depreciation')"
+            >
+              Depreciation
+            </button>
           </div>
 
-          <div class="tab-panel" role="tabpanel">
-            <section>
-              <h2>Specs</h2>
-              <p>{{ detail.specs }}</p>
-            </section>
+          @if (selectedDetailTab() === 'overview') {
+            <div class="tab-panel tab-panel--overview" role="tabpanel">
+              <section>
+                <h2>Specs</h2>
+                <p>{{ detail.specs }}</p>
+              </section>
 
-            <section>
-              <h2>Lifecycle</h2>
-              <ul>
-                <li>
-                  <mat-icon aria-hidden="true">event_available</mat-icon>
-                  <span>Procured {{ detail.acquisitionDate }}</span>
-                </li>
-                <li>
-                  <mat-icon aria-hidden="true">timeline</mat-icon>
-                  <span>Default useful life {{ detail.usefulLife }} (Straight Line)</span>
-                </li>
-                <li>
-                  <mat-icon aria-hidden="true">construction</mat-icon>
-                  <span>{{ detail.maintenanceRecords }} maintenance record(s)</span>
-                </li>
-                <li>
-                  <mat-icon aria-hidden="true">assignment_ind</mat-icon>
-                  <span>{{ detail.allocationEvents }} allocation event(s)</span>
-                </li>
-              </ul>
-            </section>
-          </div>
+              <section>
+                <h2>Lifecycle</h2>
+                <ul>
+                  <li>
+                    <mat-icon aria-hidden="true">event_available</mat-icon>
+                    <span>Procured {{ detail.acquisitionDate }}</span>
+                  </li>
+                  <li>
+                    <mat-icon aria-hidden="true">timeline</mat-icon>
+                    <span>Default useful life {{ detail.usefulLife }} ({{ detail.depreciationMethod }})</span>
+                  </li>
+                  <li>
+                    <mat-icon aria-hidden="true">construction</mat-icon>
+                    <span>{{ detail.maintenanceRecords }} maintenance record(s)</span>
+                  </li>
+                  <li>
+                    <mat-icon aria-hidden="true">assignment_ind</mat-icon>
+                    <span>{{ detail.allocationEvents }} allocation event(s)</span>
+                  </li>
+                </ul>
+              </section>
+            </div>
+          }
+
+          @if (selectedDetailTab() === 'history') {
+            <div class="tab-panel tab-panel--stacked" role="tabpanel">
+              <section>
+                <h2>Allocation history</h2>
+                <div class="detail-list">
+                  @for (event of detail.allocationHistory; track $index) {
+                    <article class="detail-list__item">
+                      <div class="detail-list__header">
+                        <strong>{{ event.event }}</strong>
+                        <span>{{ event.start }}</span>
+                      </div>
+                      <p>{{ event.user }}</p>
+                      <p>{{ event.notes }}</p>
+                      <small>Ended {{ event.end }}</small>
+                    </article>
+                  } @empty {
+                    <p class="detail-empty">No allocation history is available for this asset.</p>
+                  }
+                </div>
+              </section>
+            </div>
+          }
+
+          @if (selectedDetailTab() === 'maintenance') {
+            <div class="tab-panel tab-panel--stacked" role="tabpanel">
+              <section>
+                <h2>Maintenance records</h2>
+                @if (!canAdminAssets()) {
+                  <p class="detail-empty">Maintenance records are only available to AdminIT in the current UI policy.</p>
+                } @else {
+                  <div class="detail-list">
+                    @for (record of detail.maintenanceHistory; track $index) {
+                      <article class="detail-list__item">
+                        <div class="detail-list__header">
+                          <strong>{{ record.type }}</strong>
+                          <span>{{ record.status }}</span>
+                        </div>
+                        <p>{{ record.description }}</p>
+                        <p>{{ record.vendor }}</p>
+                        <p>{{ record.notes }}</p>
+                        <small>{{ record.start }} to {{ record.end }} · {{ record.cost }}</small>
+                      </article>
+                    } @empty {
+                      <p class="detail-empty">No maintenance records are available for this asset.</p>
+                    }
+                  </div>
+                }
+              </section>
+            </div>
+          }
+
+          @if (selectedDetailTab() === 'depreciation') {
+            <div class="tab-panel tab-panel--stacked" role="tabpanel">
+              <section>
+                <h2>Depreciation</h2>
+                <dl class="detail-metrics">
+                  <div>
+                    <dt>Method</dt>
+                    <dd>{{ detail.depreciation.method }}</dd>
+                  </div>
+                  <div>
+                    <dt>Useful life</dt>
+                    <dd>{{ detail.depreciation.usefulLife }}</dd>
+                  </div>
+                  <div>
+                    <dt>Acquisition cost</dt>
+                    <dd>{{ detail.depreciation.acquisitionCost }}</dd>
+                  </div>
+                  <div>
+                    <dt>Salvage value</dt>
+                    <dd>{{ detail.depreciation.salvageValue }}</dd>
+                  </div>
+                  <div>
+                    <dt>Depreciable base</dt>
+                    <dd>{{ detail.depreciation.depreciableBase }}</dd>
+                  </div>
+                  <div>
+                    <dt>Monthly depreciation</dt>
+                    <dd>{{ detail.depreciation.monthlyDepreciation }}</dd>
+                  </div>
+                  <div>
+                    <dt>Annual depreciation</dt>
+                    <dd>{{ detail.depreciation.annualDepreciation }}</dd>
+                  </div>
+                  <div>
+                    <dt>Estimated book value</dt>
+                    <dd>{{ detail.depreciation.estimatedBookValue }}</dd>
+                  </div>
+                  <div>
+                    <dt>Remaining life</dt>
+                    <dd>{{ detail.depreciation.remainingLife }}</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+          }
         </section>
       </section>
     } @else {

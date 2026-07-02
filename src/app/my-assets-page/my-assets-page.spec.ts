@@ -54,7 +54,7 @@ describe('MyAssetsPage', () => {
     expect(compiled.textContent).toContain('Dell UltraSharp 27');
     expect(compiled.textContent).toContain('AH-0016');
     expect(compiled.textContent).toContain('Logitech MX Master 3S');
-    expect(compiled.querySelectorAll('.handover-button').length).toBe(2);
+    expect(compiled.querySelectorAll('.handover-button').length).toBe(3);
   });
 
   it('should keep the same assigned assets across all mock roles', async () => {
@@ -105,6 +105,18 @@ describe('MyAssetsPage', () => {
     expect(anchorClick).toHaveBeenCalled();
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:handover');
     expect(compiled.textContent).toContain('Downloaded BB-2026-0001.');
+  });
+
+  it('should show the handover action even before document metadata is loaded', async () => {
+    const compiled = await createPage();
+    const buttons = compiled.querySelectorAll<HTMLButtonElement>('.handover-button');
+
+    buttons[2]?.click();
+    fixture.detectChanges();
+
+    expect(buttons.length).toBe(3);
+    expect(allocations.downloadHandover).toHaveBeenCalledWith('asset-16');
+    expect(compiled.textContent).toContain('Downloaded handover-AH-0016.pdf.');
   });
 });
 

@@ -5,10 +5,12 @@ import { AuthService } from '../services/auth.service';
 import { ApiService } from '../services/api.service';
 import { AssetQuery, AssetsService } from '../services/assets.service';
 import {
+  AllocationHistoryItem,
   AssetInstanceDto,
   AssetInstanceListItem,
   AssetModelDto,
   AssetModelListItem,
+  MaintenanceRecordDto,
   PagedResult,
 } from '../models/api.model';
 
@@ -42,6 +44,17 @@ const ASSETS: readonly AssetInstanceListItem[] = [
   asset('asset-20', 'AH-0020', 'C02XW0EEJG5N', 'model-mbp', 'MacBook Pro 14"', 6, null, 'Disposed'),
 ];
 
+const ALLOCATION_HISTORY: readonly AllocationHistoryItem[] = [
+  allocationEvent('alloc-1', 'AH-0001', 'MacBook Pro 14"', 'Chloe Davis', 0, '2026-01-12T00:00:00Z', null, 'Initial handover.'),
+  allocationEvent('alloc-2', 'AH-0001', 'MacBook Pro 14"', 'Felix Wong', 1, '2026-02-20T00:00:00Z', '2026-03-10T00:00:00Z', 'Temporary reassignment.'),
+  allocationEvent('alloc-3', 'AH-0001', 'MacBook Pro 14"', 'Chloe Davis', 2, '2026-03-11T00:00:00Z', null, 'Returned to engineering.'),
+];
+
+const MAINTENANCE_HISTORY: readonly MaintenanceRecordDto[] = [
+  maintenanceRecord('maint-1', 'AH-0001', 0, 'Battery diagnostics', 'FixLab', 450000, '2026-05-01T00:00:00Z', '2026-05-04T00:00:00Z', 1, 'Completed service.'),
+  maintenanceRecord('maint-2', 'AH-0001', 2, 'Quarterly inspection', null, 0, '2026-06-01T00:00:00Z', null, 0, 'Inspection in progress.'),
+];
+
 describe('AssetsPage', () => {
   let fixture: ComponentFixture<AssetsPage>;
   let auth: AuthService;
@@ -60,8 +73,12 @@ describe('AssetsPage', () => {
       models: vi.fn(() => of(page(MODELS))),
       model: vi.fn((id: string) => of(modelDetail(id))),
       get: vi.fn((id: string) => of(assetDetail(id))),
-      history: vi.fn(() => of({ items: [], total: 3, page: 1, pageSize: 1, totalPages: 1 })),
-      maintenance: vi.fn(() => of({ items: [], total: 1, page: 1, pageSize: 1, totalPages: 1 })),
+      history: vi.fn(() =>
+        of({ items: ALLOCATION_HISTORY, total: ALLOCATION_HISTORY.length, page: 1, pageSize: 50, totalPages: 1 })
+      ),
+      maintenance: vi.fn(() =>
+        of({ items: MAINTENANCE_HISTORY, total: MAINTENANCE_HISTORY.length, page: 1, pageSize: 50, totalPages: 1 })
+      ),
     };
 
     await TestBed.configureTestingModule({
@@ -111,6 +128,7 @@ describe('AssetsPage', () => {
     expect(compiled.querySelector<HTMLImageElement>('.qr-code')?.src).toBe('http://localhost:5046/qr/AH-0001.png');
     expect(compiled.textContent).toContain('Acquisition cost');
     expect(compiled.textContent).toContain('Standard issue dev laptop.');
+    expect(compiled.textContent).toContain('Default useful life 48 months (Straight line)');
 
     compiled.querySelector<HTMLButtonElement>('.back-button')?.click();
     fixture.detectChanges();
@@ -133,6 +151,39 @@ describe('AssetsPage', () => {
     expect(compiled.textContent).toContain('AH-0008');
     expect(compiled.textContent).toContain('AH-0016');
     expect(compiled.textContent).toContain('Showing 3 of 20');
+  });
+
+  it('should render detail tabs from allocation, maintenance, and derived depreciation data', () => {
+    auth.selectMockUser('alice');
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    compiled.querySelector<HTMLButtonElement>('[aria-label="Show QR details for AH-0001"]')?.click();
+    fixture.detectChanges();
+
+    Array.from(compiled.querySelectorAll<HTMLButtonElement>('.tab'))
+      .find(button => button.textContent?.includes('Allocation history'))
+      ?.click();
+    fixture.detectChanges();
+
+    expect(compiled.textContent).toContain('Initial handover.');
+    expect(compiled.textContent).toContain('Temporary reassignment.');
+
+    Array.from(compiled.querySelectorAll<HTMLButtonElement>('.tab'))
+      .find(button => button.textContent?.includes('Maintenance'))
+      ?.click();
+    fixture.detectChanges();
+
+    expect(compiled.textContent).toContain('Battery diagnostics');
+    expect(compiled.textContent).toContain('Completed service.');
+
+    Array.from(compiled.querySelectorAll<HTMLButtonElement>('.tab'))
+      .find(button => button.textContent?.includes('Depreciation'))
+      ?.click();
+    fixture.detectChanges();
+
+    expect(compiled.textContent).toContain('Depreciable base');
+    expect(compiled.textContent).toContain('Estimated book value');
   });
 
   it('should combine asset search with status and model filters', async () => {
@@ -239,5 +290,59 @@ function modelDetail(id: string): AssetModelDto {
     imageUrl: null,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+  };
+}
+
+function allocationEvent(
+  id: string,
+  assetCode: string,
+  modelName: string,
+  userName: string,
+  eventType: number,
+  startDate: string,
+  endDate: string | null,
+  notes: string
+): AllocationHistoryItem {
+  return {
+    id,
+    assetInstanceId: 'asset-1',
+    assetCode,
+    modelName,
+    userId: `user-${userName}`,
+    userName,
+    eventType,
+    startDate,
+    endDate,
+    allocationRequestId: null,
+    notes,
+    createdAt: startDate,
+  };
+}
+
+function maintenanceRecord(
+  id: string,
+  assetCode: string,
+  maintenanceType: number,
+  description: string,
+  vendor: string | null,
+  cost: number,
+  startDate: string,
+  endDate: string | null,
+  status: number,
+  notes: string
+): MaintenanceRecordDto {
+  return {
+    id,
+    assetInstanceId: 'asset-1',
+    assetCode,
+    maintenanceType,
+    description,
+    cost,
+    vendor,
+    startDate,
+    endDate,
+    status,
+    notes,
+    createdAt: startDate,
   };
 }
