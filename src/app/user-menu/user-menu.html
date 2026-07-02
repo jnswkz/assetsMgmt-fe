@@ -1,0 +1,42 @@
+<div class="user-menu">
+  <button
+    class="profile-button"
+    type="button"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-controls]="menuId()"
+    aria-haspopup="menu"
+    aria-label="Open user menu"
+    (click)="toggle()"
+  >
+    <span class="avatar">{{ user().initials }}</span>
+    <span class="profile-copy">
+      <span>{{ user().displayName }}</span>
+      <small>{{ user().department }}</small>
+    </span>
+    <mat-icon aria-hidden="true">{{ isOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
+  </button>
+
+  @if (isOpen()) {
+    <button
+      class="user-menu__backdrop"
+      type="button"
+      tabindex="-1"
+      aria-hidden="true"
+      (click)="close()"
+    ></button>
+
+    <div class="user-menu__panel" role="menu" [id]="menuId()">
+      <div class="user-menu__header">
+        <span class="avatar">{{ user().initials }}</span>
+        <span class="user-menu__identity">
+          <strong>{{ user().displayName }}</strong>
+          <small>{{ user().role }}</small>
+        </span>
+      </div>
+      <button class="user-menu__item" type="button" role="menuitem" (click)="logout()">
+        <mat-icon aria-hidden="true">logout</mat-icon>
+        <span>Log out</span>
+      </button>
+    </div>
+  }
+</div>

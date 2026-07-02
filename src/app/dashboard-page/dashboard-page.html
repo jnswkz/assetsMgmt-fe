@@ -20,14 +20,7 @@
         <mat-icon aria-hidden="true">notifications</mat-icon>
       </button>
 
-      <button class="profile-button" type="button" aria-label="Open user menu">
-        <span class="avatar">{{ user().initials }}</span>
-        <span class="profile-copy">
-          <span>{{ user().displayName }}</span>
-          <small>{{ user().department }}</small>
-        </span>
-        <mat-icon aria-hidden="true">expand_more</mat-icon>
-      </button>
+      <app-user-menu />
     </div>
   </header>
 
@@ -43,6 +36,10 @@
         <mat-icon aria-hidden="true">north_east</mat-icon>
       </a>
     </section>
+
+    @if (errorMessage()) {
+      <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+    }
 
     <section class="stats-grid" aria-label="Asset summary">
       @for (stat of view().stats; track stat.label) {
@@ -61,15 +58,17 @@
     <section class="chart-grid" aria-label="Asset charts">
       <article class="panel status-panel">
         <h2>Assets by status</h2>
-        <div class="donut" [style.background]="donutBackground" aria-hidden="true">
+        <div class="donut" [style.background]="donutBackground()" aria-hidden="true">
           <span></span>
         </div>
         <ul class="legend" aria-label="Assets by status legend">
-          @for (slice of statusSlices; track slice.label) {
+          @for (slice of statusSlices(); track slice.label) {
             <li>
               <span [style.background]="slice.color"></span>
               {{ slice.label }}
             </li>
+          } @empty {
+            <li class="empty-state">No data</li>
           }
         </ul>
       </article>
@@ -77,19 +76,14 @@
       <article class="panel category-panel">
         <h2>Assets by category</h2>
         <div class="bar-chart" aria-label="Assets by category bar chart">
-          <div class="axis-labels" aria-hidden="true">
-            <span>12</span>
-            <span>9</span>
-            <span>6</span>
-            <span>3</span>
-            <span>0</span>
-          </div>
           <div class="bars">
-            @for (bar of categoryBars; track bar.label) {
+            @for (bar of categoryBars(); track bar.label) {
               <div class="bar-column">
                 <span class="bar" [style.height]="barHeight(bar.value)"></span>
                 <span class="bar-label">{{ bar.label }}</span>
               </div>
+            } @empty {
+              <p class="empty-state">No data</p>
             }
           </div>
         </div>
@@ -139,14 +133,7 @@
       <article class="panel activity-panel">
         <h2>Recent activity</h2>
         <div class="activity-list">
-          @for (activity of filteredActivities(); track activity.message) {
-            <article>
-              <p>{{ activity.message }}</p>
-              <small>{{ activity.time }}</small>
-            </article>
-          } @empty {
-            <p class="empty-state">No activity matches your search.</p>
-          }
+          <p class="empty-state">Activity feed is not available yet.</p>
         </div>
       </article>
     </section>

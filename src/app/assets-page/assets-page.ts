@@ -1,23 +1,42 @@
+import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { Subject, debounceTime, forkJoin } from 'rxjs';
 import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
-import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
+import { AssetsService } from '../services/assets.service';
+import { ApiService } from '../services/api.service';
+import { controlValue, matchesSearch } from '../utils/search';
+import {
+  AssetInstanceDto,
+  AssetInstanceListItem,
+  AssetModelListItem,
+  PagedResult,
+  UserListItem,
+} from '../models/api.model';
+import { ASSET_STATUS, DISPOSAL_TYPE, MAINTENANCE_TYPE, assetStatusLabel, assetStatusValue } from '../models/enums';
 
-type AssetStatus = 'Allocated' | 'In stock' | 'Maintenance' | 'Locked' | 'Retired' | 'Lost' | 'Disposed';
-
-interface AssetUnit {
+interface AssetRow {
+  readonly id: string;
   readonly code: string;
   readonly serial: string;
   readonly model: string;
-  readonly status: AssetStatus;
+  readonly status: string;
   readonly currentHolder: string;
   readonly location: string;
 }
 
-interface AssetDetail {
-  readonly asset: AssetUnit;
+interface AssetDetailView {
+  readonly id: string;
+  readonly asset: {
+    readonly code: string;
+    readonly status: string;
+    readonly model: string;
+    readonly serial: string;
+    readonly currentHolder: string;
+    readonly location: string;
+  };
   readonly manufacturer: string;
   readonly acquisitionCost: string;
   readonly acquisitionDate: string;
@@ -30,272 +49,66 @@ interface AssetDetail {
   readonly allocationEvents: number;
 }
 
-interface ModelProfile {
-  readonly manufacturer: string;
-  readonly acquisitionCost: string;
-  readonly salvageValue: string;
-  readonly specs: string;
-  readonly usefulLife: string;
-  readonly notes: string;
-}
-
-const MODEL_PROFILES: Record<string, ModelProfile> = {
-  'MacBook Pro 14"': {
-    manufacturer: 'Apple',
-    acquisitionCost: '$2,399',
-    salvageValue: '$300',
-    specs: 'Apple M3 Pro, 18GB RAM, 512GB SSD',
-    usefulLife: '48 months',
-    notes: 'Standard issue dev laptop.',
-  },
-  'ThinkPad X1 Carbon': {
-    manufacturer: 'Lenovo',
-    acquisitionCost: '$1,699',
-    salvageValue: '$220',
-    specs: 'Intel Core Ultra 7, 16GB RAM, 1TB SSD',
-    usefulLife: '36 months',
-    notes: 'Portable laptop for hybrid work.',
-  },
-  'Dell UltraSharp 27': {
-    manufacturer: 'Dell',
-    acquisitionCost: '$589',
-    salvageValue: '$80',
-    specs: '27 inch 4K USB-C monitor',
-    usefulLife: '60 months',
-    notes: 'Desk display for office workstations.',
-  },
-  'iPhone 15 Pro': {
-    manufacturer: 'Apple',
-    acquisitionCost: '$999',
-    salvageValue: '$180',
-    specs: '256GB, 5G, managed mobile device',
-    usefulLife: '36 months',
-    notes: 'Mobile device assigned through MDM.',
-  },
-  'iPad Air': {
-    manufacturer: 'Apple',
-    acquisitionCost: '$699',
-    salvageValue: '$120',
-    specs: 'M2, 11 inch, Wi-Fi + Cellular',
-    usefulLife: '36 months',
-    notes: 'Tablet for field and review workflows.',
-  },
-  'Logitech MX Master 3S': {
-    manufacturer: 'Logitech',
-    acquisitionCost: '$99',
-    salvageValue: '$10',
-    specs: 'Wireless ergonomic mouse',
-    usefulLife: '24 months',
-    notes: 'Peripheral issued with workstation kits.',
-  },
-  'HP LaserJet Pro': {
-    manufacturer: 'HP',
-    acquisitionCost: '$349',
-    salvageValue: '$40',
-    specs: 'Monochrome network laser printer',
-    usefulLife: '60 months',
-    notes: 'Shared printer for office floors.',
-  },
-  'Cisco Catalyst 9200': {
-    manufacturer: 'Cisco',
-    acquisitionCost: '$4,200',
-    salvageValue: '$500',
-    specs: '24-port managed access switch',
-    usefulLife: '84 months',
-    notes: 'Network infrastructure asset.',
-  },
-};
-
-const ASSET_UNITS: readonly AssetUnit[] = [
-  {
-    code: 'AH-0001',
-    serial: 'C02XW0AAJG5J',
-    model: 'MacBook Pro 14"',
-    status: 'Allocated',
-    currentHolder: 'Chloe Davis',
-    location: 'HQ / 4F / Desk 412',
-  },
-  {
-    code: 'AH-0002',
-    serial: 'C02XW0BBJG5K',
-    model: 'MacBook Pro 14"',
-    status: 'In stock',
-    currentHolder: '-',
-    location: 'HQ / IT Storage',
-  },
-  {
-    code: 'AH-0003',
-    serial: 'C02XW0CCJG5L',
-    model: 'MacBook Pro 14"',
-    status: 'Maintenance',
-    currentHolder: '-',
-    location: 'Repair Center',
-  },
-  {
-    code: 'AH-0004',
-    serial: 'C02XW0DDJG5M',
-    model: 'MacBook Pro 14"',
-    status: 'Allocated',
-    currentHolder: 'Diego Ramirez',
-    location: 'HQ / 3F / Desk 318',
-  },
-  {
-    code: 'AH-0005',
-    serial: 'LX1C2304871',
-    model: 'ThinkPad X1 Carbon',
-    status: 'Allocated',
-    currentHolder: 'Felix Wong',
-    location: 'HQ / 2F / Desk 207',
-  },
-  {
-    code: 'AH-0006',
-    serial: 'LX1C2304872',
-    model: 'ThinkPad X1 Carbon',
-    status: 'In stock',
-    currentHolder: '-',
-    location: 'HQ / IT Storage',
-  },
-  {
-    code: 'AH-0007',
-    serial: 'LX1C2304873',
-    model: 'ThinkPad X1 Carbon',
-    status: 'Locked',
-    currentHolder: '-',
-    location: 'HQ / IT Storage',
-  },
-  {
-    code: 'AH-0008',
-    serial: 'CN-DELL-1011',
-    model: 'Dell UltraSharp 27',
-    status: 'Allocated',
-    currentHolder: 'Chloe Davis',
-    location: 'HQ / 4F / Desk 412',
-  },
-  {
-    code: 'AH-0009',
-    serial: 'CN-DELL-1012',
-    model: 'Dell UltraSharp 27',
-    status: 'Allocated',
-    currentHolder: 'Diego Ramirez',
-    location: 'HQ / 3F / Desk 318',
-  },
-  {
-    code: 'AH-0010',
-    serial: 'CN-DELL-1013',
-    model: 'Dell UltraSharp 27',
-    status: 'In stock',
-    currentHolder: '-',
-    location: 'HQ / IT Storage',
-  },
-  {
-    code: 'AH-0011',
-    serial: 'F2LX-9981',
-    model: 'iPhone 15 Pro',
-    status: 'Allocated',
-    currentHolder: 'Felix Wong',
-    location: 'Mobile / Sales',
-  },
-  {
-    code: 'AH-0012',
-    serial: 'F2LX-9982',
-    model: 'iPhone 15 Pro',
-    status: 'Retired',
-    currentHolder: '-',
-    location: 'Archive',
-  },
-  {
-    code: 'AH-0013',
-    serial: 'F2LX-9983',
-    model: 'iPhone 15 Pro',
-    status: 'Lost',
-    currentHolder: '-',
-    location: '-',
-  },
-  {
-    code: 'AH-0014',
-    serial: 'DMX-AIR-101',
-    model: 'iPad Air',
-    status: 'Allocated',
-    currentHolder: 'Gina Patel',
-    location: 'Marketing',
-  },
-  {
-    code: 'AH-0015',
-    serial: 'DMX-AIR-102',
-    model: 'iPad Air',
-    status: 'In stock',
-    currentHolder: '-',
-    location: 'HQ / IT Storage',
-  },
-  {
-    code: 'AH-0016',
-    serial: 'LGT-MX3S-A1',
-    model: 'Logitech MX Master 3S',
-    status: 'Allocated',
-    currentHolder: 'Chloe Davis',
-    location: 'HQ / 4F',
-  },
-  {
-    code: 'AH-0017',
-    serial: 'LGT-MX3S-A2',
-    model: 'Logitech MX Master 3S',
-    status: 'In stock',
-    currentHolder: '-',
-    location: 'HQ / IT Storage',
-  },
-  {
-    code: 'AH-0018',
-    serial: 'HP-LJP-3301',
-    model: 'HP LaserJet Pro',
-    status: 'Allocated',
-    currentHolder: '-',
-    location: 'HQ / 2F / Print',
-  },
-  {
-    code: 'AH-0019',
-    serial: 'CSC-9200-77',
-    model: 'Cisco Catalyst 9200',
-    status: 'Allocated',
-    currentHolder: '-',
-    location: 'MDF Room',
-  },
-  {
-    code: 'AH-0020',
-    serial: 'C02XW0EEJG5N',
-    model: 'MacBook Pro 14"',
-    status: 'Disposed',
-    currentHolder: '-',
-    location: 'Disposed',
-  },
-];
+type ActionMode = 'return' | 'transfer' | 'maintenance' | 'dispose';
 
 @Component({
   selector: 'app-assets-page',
-  imports: [FilterSelect, MatIconModule],
+  imports: [FilterSelect, MatIconModule, UserMenu],
   templateUrl: './assets-page.html',
   styleUrl: './assets-page.css',
 })
 export class AssetsPage {
   private readonly auth = inject(AuthService);
+  private readonly assetsApi = inject(AssetsService);
+  private readonly api = inject(ApiService);
   protected readonly theme = inject(ThemeService);
 
-  protected readonly user = this.auth.currentUser;
-  protected readonly assets = ASSET_UNITS;
+  protected readonly user = this.auth.profile;
+  protected readonly canManageAssets = computed(() => this.auth.role() !== 'Employee');
+
+  private readonly pageSize = 20;
+  protected readonly page = signal(1);
+  private readonly result = signal<PagedResult<AssetInstanceListItem> | null>(null);
+  protected readonly isLoading = signal(true);
+  protected readonly errorMessage = signal('');
+  protected readonly statusMessage = signal('');
+
   protected readonly globalSearch = signal('');
   protected readonly assetSearch = signal('');
   protected readonly statusFilter = signal('');
   protected readonly modelFilter = signal('');
-  protected readonly statuses = uniqueStrings(ASSET_UNITS.map(asset => asset.status));
-  protected readonly models = uniqueStrings(ASSET_UNITS.map(asset => asset.model));
-  protected readonly selectedAsset = signal<AssetUnit | null>(null);
-  protected readonly canManageAssets = computed(() => this.auth.role() !== 'Employee');
-  protected readonly filteredAssets = computed(() => {
-    const status = this.statusFilter();
-    const model = this.modelFilter();
+  private readonly searchInput = new Subject<string>();
 
-    return this.assets.filter(asset =>
-      (!status || asset.status === status) &&
-      (!model || asset.model === model) &&
+  private readonly modelList = signal<readonly AssetModelListItem[]>([]);
+  protected readonly statuses = ASSET_STATUS;
+  protected readonly models = computed(() =>
+    this.modelList()
+      .map(model => model.name ?? '')
+      .filter(Boolean)
+  );
+
+  protected readonly selectedAsset = signal<AssetDetailView | null>(null);
+
+  // Inline mutation panel state
+  protected readonly actionMode = signal<ActionMode | null>(null);
+  protected readonly actionError = signal('');
+  protected readonly actionNotes = signal('');
+  protected readonly transferUserId = signal('');
+  protected readonly maintenanceType = signal(0);
+  protected readonly maintenanceVendor = signal('');
+  protected readonly maintenanceCost = signal('');
+  protected readonly disposalType = signal(0);
+  protected readonly disposalSoldTo = signal('');
+  protected readonly disposalPrice = signal('');
+  protected readonly users = signal<readonly UserListItem[]>([]);
+  protected readonly maintenanceTypes = MAINTENANCE_TYPE;
+  protected readonly disposalTypes = DISPOSAL_TYPE;
+
+  protected readonly rows = computed<readonly AssetRow[]>(() =>
+    (this.result()?.items ?? []).map(toRow)
+  );
+  protected readonly filteredAssets = computed(() =>
+    this.rows().filter(asset =>
       matchesSearch(this.globalSearch(), [
         asset.code,
         asset.serial,
@@ -303,65 +116,299 @@ export class AssetsPage {
         asset.status,
         asset.currentHolder,
         asset.location,
-      ]) &&
-      matchesSearch(this.assetSearch(), [
-        asset.code,
-        asset.serial,
-        asset.model,
-        asset.currentHolder,
-        asset.location,
       ])
-    );
-  });
-  protected readonly selectedAssetDetail = computed(() => {
-    const asset = this.selectedAsset();
+    )
+  );
+  protected readonly total = computed(() => this.result()?.total ?? 0);
+  protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
 
-    return asset ? buildAssetDetail(asset) : null;
-  });
+  constructor() {
+    this.searchInput.pipe(debounceTime(300)).subscribe(value => {
+      this.assetSearch.set(value);
+      this.page.set(1);
+      this.load();
+    });
+    this.assetsApi.models().subscribe(result => this.modelList.set(result.items));
+    this.load();
+  }
+
+  private load(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+
+    const statusLabel = this.statusFilter();
+    const modelName = this.modelFilter();
+    const modelId = modelName
+      ? this.modelList().find(model => model.name === modelName)?.id
+      : undefined;
+
+    this.assetsApi
+      .list({
+        status: statusLabel ? assetStatusValue(statusLabel) : undefined,
+        modelId,
+        search: this.assetSearch() || undefined,
+        page: this.page(),
+        pageSize: this.pageSize,
+      })
+      .subscribe({
+        next: result => {
+          this.result.set(result);
+          this.isLoading.set(false);
+        },
+        error: () => {
+          this.errorMessage.set('Unable to load assets.');
+          this.isLoading.set(false);
+        },
+      });
+  }
 
   protected updateGlobalSearch(event: Event): void {
     this.globalSearch.set(controlValue(event));
   }
 
   protected updateAssetSearch(event: Event): void {
-    this.assetSearch.set(controlValue(event));
+    this.searchInput.next(controlValue(event));
   }
 
-  protected updateStatusFilter(event: Event): void {
-    this.statusFilter.set(controlValue(event));
+  protected setStatusFilter(value: string): void {
+    this.statusFilter.set(value);
+    this.page.set(1);
+    this.load();
   }
 
-  protected updateModelFilter(event: Event): void {
-    this.modelFilter.set(controlValue(event));
+  protected setModelFilter(value: string): void {
+    this.modelFilter.set(value);
+    this.page.set(1);
+    this.load();
   }
 
-  protected openAssetDetail(asset: AssetUnit): void {
-    this.selectedAsset.set(asset);
+  protected prevPage(): void {
+    if (this.page() > 1) {
+      this.page.update(p => p - 1);
+      this.load();
+    }
+  }
+
+  protected nextPage(): void {
+    if (this.page() < this.totalPages()) {
+      this.page.update(p => p + 1);
+      this.load();
+    }
+  }
+
+  protected openAssetDetail(asset: AssetRow): void {
+    this.closeActionPanel();
+    forkJoin({
+      detail: this.assetsApi.get(asset.id),
+      history: this.assetsApi.history(asset.id),
+      maintenance: this.assetsApi.maintenance(asset.id),
+    }).subscribe({
+      next: ({ detail, history, maintenance }) => {
+        this.assetsApi.model(detail.modelId).subscribe({
+          next: model =>
+            this.selectedAsset.set(
+              toDetail(detail, {
+                manufacturer: model.manufacturer ?? '-',
+                specs: model.specs ?? '-',
+                usefulLifeMonths: model.defaultUsefulLifeMonths,
+                allocationEvents: history.total,
+                maintenanceRecords: maintenance.total,
+              })
+            ),
+          error: () =>
+            this.selectedAsset.set(
+              toDetail(detail, {
+                manufacturer: '-',
+                specs: '-',
+                usefulLifeMonths: 0,
+                allocationEvents: history.total,
+                maintenanceRecords: maintenance.total,
+              })
+            ),
+        });
+      },
+      error: () => this.errorMessage.set('Unable to load asset detail.'),
+    });
   }
 
   protected closeAssetDetail(): void {
     this.selectedAsset.set(null);
+    this.closeActionPanel();
+  }
+
+  // --- Mutations ---
+
+  protected openAction(mode: ActionMode): void {
+    this.actionMode.set(mode);
+    this.actionError.set('');
+    this.actionNotes.set('');
+    this.transferUserId.set('');
+    this.maintenanceVendor.set('');
+    this.maintenanceCost.set('');
+    this.disposalSoldTo.set('');
+    this.disposalPrice.set('');
+    if ((mode === 'transfer' || mode === 'dispose') && this.users().length === 0) {
+      this.api
+        .get<PagedResult<UserListItem>>('/api/users', { page: 1, pageSize: 200 })
+        .subscribe(result => this.users.set(result.items));
+    }
+  }
+
+  protected closeActionPanel(): void {
+    this.actionMode.set(null);
+    this.actionError.set('');
+  }
+
+  protected updateActionNotes(event: Event): void {
+    this.actionNotes.set(controlValue(event));
+  }
+
+  protected submitAction(): void {
+    const detail = this.selectedAsset();
+    if (!detail) {
+      return;
+    }
+    const id = detail.id;
+    const mode = this.actionMode();
+    if (!mode) {
+      return;
+    }
+
+    const done = (message: string) => {
+      this.statusMessage.set(message);
+      this.closeActionPanel();
+      this.refreshDetail(id);
+      this.load();
+    };
+    const fail = () => this.actionError.set('Action failed. Please try again.');
+
+    switch (mode) {
+      case 'return':
+        this.assetsApi
+          .returnAsset(id, { notes: this.actionNotes() || null })
+          .subscribe({ next: () => done('Asset returned'), error: fail });
+        break;
+      case 'transfer':
+        if (!this.transferUserId()) {
+          this.actionError.set('Choose a user to transfer to.');
+          return;
+        }
+        this.assetsApi
+          .transfer(id, { toUserId: this.transferUserId(), notes: this.actionNotes() || null })
+          .subscribe({ next: () => done('Asset transferred'), error: fail });
+        break;
+      case 'maintenance':
+        this.assetsApi
+          .startMaintenance(id, {
+            type: this.maintenanceType(),
+            description: this.actionNotes() || null,
+            vendor: this.maintenanceVendor() || null,
+            cost: numberOrNull(this.maintenanceCost()),
+          })
+          .subscribe({ next: () => done('Maintenance started'), error: fail });
+        break;
+      case 'dispose':
+        this.assetsApi
+          .dispose(id, {
+            type: this.disposalType(),
+            soldToUserId: this.disposalSoldTo() || null,
+            salePrice: numberOrNull(this.disposalPrice()),
+            reason: this.actionNotes() || null,
+          })
+          .subscribe({ next: () => done('Asset disposed'), error: fail });
+        break;
+    }
+  }
+
+  private refreshDetail(id: string): void {
+    const current = this.selectedAsset();
+    this.assetsApi.get(id).subscribe(detail =>
+      this.selectedAsset.set(
+        toDetail(detail, {
+          manufacturer: current?.manufacturer ?? '-',
+          specs: current?.specs ?? '-',
+          usefulLifeMonths: 0,
+          allocationEvents: current?.allocationEvents ?? 0,
+          maintenanceRecords: current?.maintenanceRecords ?? 0,
+        })
+      )
+    );
+  }
+
+  protected onSelectChange(target: (value: number) => void, event: Event): void {
+    const value = Number(controlValue(event));
+    target(Number.isNaN(value) ? 0 : value);
+  }
+
+  protected onTextChange(target: (value: string) => void, event: Event): void {
+    target(controlValue(event));
   }
 }
 
-function buildAssetDetail(asset: AssetUnit): AssetDetail {
-  const profile = MODEL_PROFILES[asset.model];
-  const sequence = Number(asset.code.replace('AH-', ''));
-  const acquisitionDay = String(((sequence + 4) % 24) + 1).padStart(2, '0');
-  const maintenanceRecords = asset.status === 'Maintenance' ? 1 : 0;
-  const allocationEvents = asset.currentHolder === '-' ? 0 : 1;
-
+function toRow(item: AssetInstanceListItem): AssetRow {
   return {
-    asset,
-    manufacturer: profile.manufacturer,
-    acquisitionCost: profile.acquisitionCost,
-    acquisitionDate: `2025-05-${acquisitionDay}`,
-    salvageValue: profile.salvageValue,
-    warrantyExpiry: `2027-05-${acquisitionDay}`,
-    notes: profile.notes,
-    specs: profile.specs,
-    usefulLife: profile.usefulLife,
-    maintenanceRecords,
-    allocationEvents,
+    id: item.id,
+    code: item.assetCode ?? '-',
+    serial: item.serial ?? '-',
+    model: item.modelName ?? '-',
+    status: assetStatusLabel(item.status),
+    currentHolder: item.currentHolderName ?? '-',
+    location: item.location ?? '-',
   };
+}
+
+function toDetail(
+  dto: AssetInstanceDto,
+  extra: {
+    manufacturer: string;
+    specs: string;
+    usefulLifeMonths: number;
+    allocationEvents: number;
+    maintenanceRecords: number;
+  }
+): AssetDetailView {
+  return {
+    id: dto.id,
+    asset: {
+      code: dto.assetCode ?? '-',
+      status: assetStatusLabel(dto.status),
+      model: dto.modelName ?? '-',
+      serial: dto.serial ?? '-',
+      currentHolder: dto.currentHolderName ?? '-',
+      location: dto.location ?? '-',
+    },
+    manufacturer: extra.manufacturer,
+    acquisitionCost: formatCurrency(dto.acquisitionCost),
+    acquisitionDate: formatDate(dto.acquisitionDate),
+    salvageValue: formatCurrency(dto.salvageValue),
+    warrantyExpiry: formatDate(dto.warrantyExpiresAt),
+    notes: dto.notes ?? '-',
+    specs: extra.specs,
+    usefulLife: extra.usefulLifeMonths ? `${extra.usefulLifeMonths} months` : '-',
+    maintenanceRecords: extra.maintenanceRecords,
+    allocationEvents: extra.allocationEvents,
+  };
+}
+
+function formatCurrency(value: number | null): string {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  return value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+}
+
+function formatDate(value: string | null): string {
+  if (!value) {
+    return '-';
+  }
+  return value.slice(0, 10);
+}
+
+function numberOrNull(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  return Number.isNaN(parsed) ? null : parsed;
 }

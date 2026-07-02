@@ -13,7 +13,7 @@
 
     <form
       class="login-card"
-      aria-describedby="login-subtitle mock-login-help"
+      aria-describedby="login-subtitle"
       [formGroup]="loginForm"
       (ngSubmit)="onSubmit()"
     >
@@ -23,26 +23,6 @@
       </div>
 
       <div class="login-form">
-        <div class="mock-profiles" aria-labelledby="mock-login-help">
-          <p id="mock-login-help">Mock login</p>
-          <div class="mock-profile-list">
-            @for (profile of mockUsers; track profile.username) {
-              <button
-                class="mock-profile"
-                [class.mock-profile--active]="loginForm.controls.username.value === profile.username"
-                type="button"
-                (click)="selectMockUser(profile.username)"
-              >
-                <span>{{ profile.initials }}</span>
-                <span>
-                  <strong>{{ profile.displayName }}</strong>
-                  <small>{{ profile.role }}</small>
-                </span>
-              </button>
-            }
-          </div>
-        </div>
-
         <div class="field">
           <label for="username">Username</label>
           <input
@@ -72,7 +52,9 @@
           <p class="login-error" role="alert">{{ errorMessage() }}</p>
         }
 
-        <button type="submit">Sign in</button>
+        <button type="submit" [disabled]="isSubmitting()">
+          {{ isSubmitting() ? 'Signing in…' : 'Sign in' }}
+        </button>
       </div>
     </form>
 

@@ -1,3 +1,4 @@
+import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatIconModule } from '@angular/material/icon';
@@ -73,7 +74,7 @@ const REQUESTS: readonly AssetRequest[] = [
 
 @Component({
   selector: 'app-my-requests-page',
-  imports: [A11yModule, MatIconModule],
+  imports: [A11yModule, MatIconModule, UserMenu],
   templateUrl: './my-requests-page.html',
   styleUrl: './my-requests-page.css',
 })
@@ -81,7 +82,7 @@ export class MyRequestsPage {
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
 
-  protected readonly user = this.auth.currentUser;
+  protected readonly user = this.auth.profile;
   protected readonly requests = REQUESTS;
   protected readonly globalSearch = signal('');
   protected readonly selectedRequest = signal<AssetRequest | null>(null);

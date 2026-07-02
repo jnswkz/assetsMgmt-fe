@@ -1,3 +1,4 @@
+import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../services/auth.service';
@@ -38,7 +39,7 @@ const ASSIGNED_ASSETS: readonly AssignedAsset[] = [
 
 @Component({
   selector: 'app-my-assets-page',
-  imports: [MatIconModule],
+  imports: [MatIconModule, UserMenu],
   templateUrl: './my-assets-page.html',
   styleUrl: './my-assets-page.css',
 })
@@ -46,7 +47,7 @@ export class MyAssetsPage {
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
 
-  protected readonly user = this.auth.currentUser;
+  protected readonly user = this.auth.profile;
   protected readonly assignedAssets = ASSIGNED_ASSETS;
   protected readonly globalSearch = signal('');
   protected readonly filteredAssignedAssets = computed(() =>

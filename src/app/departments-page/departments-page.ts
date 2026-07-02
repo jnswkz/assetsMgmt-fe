@@ -1,3 +1,4 @@
+import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,7 +27,7 @@ const DEPARTMENTS: readonly Department[] = [
 
 @Component({
   selector: 'app-departments-page',
-  imports: [A11yModule, MatIconModule],
+  imports: [A11yModule, MatIconModule, UserMenu],
   templateUrl: './departments-page.html',
   styleUrl: './departments-page.css',
 })
@@ -34,7 +35,7 @@ export class DepartmentsPage {
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
 
-  protected readonly user = this.auth.currentUser;
+  protected readonly user = this.auth.profile;
   protected readonly canView = computed(() => this.user().role === 'AdminIT' || this.user().role === 'Manager');
   protected readonly canManage = computed(() => this.user().role === 'AdminIT');
   protected readonly globalSearch = signal('');

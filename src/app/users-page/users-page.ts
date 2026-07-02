@@ -1,3 +1,4 @@
+import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatIconModule } from '@angular/material/icon';
@@ -117,7 +118,7 @@ const STATUSES: readonly UserStatus[] = ['Active', 'Inactive'];
 
 @Component({
   selector: 'app-users-page',
-  imports: [A11yModule, FilterSelect, MatIconModule],
+  imports: [A11yModule, FilterSelect, MatIconModule, UserMenu],
   templateUrl: './users-page.html',
   styleUrl: './users-page.css',
 })
@@ -125,7 +126,7 @@ export class UsersPage {
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
 
-  protected readonly user = this.auth.currentUser;
+  protected readonly user = this.auth.profile;
   protected readonly canManage = computed(() => this.user().role === 'AdminIT');
   protected readonly users = signal<readonly ManagedUser[]>(USERS);
   protected readonly globalSearch = signal('');

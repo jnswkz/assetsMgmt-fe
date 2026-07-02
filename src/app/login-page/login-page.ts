@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService, MOCK_USERS } from '../services/auth.service';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-login-page',
@@ -13,29 +13,36 @@ export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  protected readonly mockUsers = MOCK_USERS;
   protected readonly errorMessage = signal('');
+  protected readonly isSubmitting = signal(false);
   protected readonly loginForm = new FormGroup({
-    username: new FormControl(this.auth.currentUser().username, { nonNullable: true }),
-    password: new FormControl('password', { nonNullable: true }),
+    username: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
 
-  protected selectMockUser(username: string): void {
-    this.auth.selectMockUser(username);
-    this.loginForm.controls.username.setValue(username);
-    this.loginForm.controls.password.setValue('password');
-    this.errorMessage.set('');
-  }
-
   protected onSubmit(): void {
-    const { username, password } = this.loginForm.getRawValue();
-
-    if (!this.auth.login(username, password)) {
-      this.errorMessage.set('Use one of the mock profiles with password "password".');
+    if (this.loginForm.invalid || this.isSubmitting()) {
+      this.loginForm.markAllAsTouched();
       return;
     }
 
+    const { username, password } = this.loginForm.getRawValue();
+    this.isSubmitting.set(true);
     this.errorMessage.set('');
-    void this.router.navigateByUrl('/dashboard');
+
+    this.auth.login(username, password).subscribe({
+      next: success => {
+        this.isSubmitting.set(false);
+        if (success) {
+          void this.router.navigateByUrl('/dashboard');
+        } else {
+          this.errorMessage.set('Invalid username or password.');
+        }
+      },
+      error: () => {
+        this.isSubmitting.set(false);
+        this.errorMessage.set('Unable to reach the server. Please try again.');
+      },
+    });
   }
 }

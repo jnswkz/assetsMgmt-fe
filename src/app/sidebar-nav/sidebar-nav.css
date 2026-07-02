@@ -35,7 +35,7 @@
   height: 64px;
   padding: 15.5px 20px;
   text-decoration: none;
-  width: 195px;
+  width: 100%;
 }
 
 .brand__mark {
@@ -87,7 +87,7 @@
   box-sizing: border-box;
   flex: 1 1 auto;
   padding: 12px 0;
-  width: 195px;
+  width: 100%;
 }
 
 .nav-group {
@@ -131,7 +131,7 @@
   transition:
     background-color 140ms ease,
     color 140ms ease;
-  width: 171px;
+  width: 100%;
 }
 
 .nav-item:hover {
@@ -162,12 +162,18 @@
   width: 16px;
 }
 
+.nav-item > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sidebar-nav__footer {
   border-top: 1px solid var(--sidebar-border);
   box-sizing: border-box;
   margin-top: auto;
   padding: 13px 0 12px 12px;
-  width: 195px;
+  width: 100%;
 }
 
 .nav-item--footer {

@@ -20,19 +20,12 @@
         <mat-icon aria-hidden="true">notifications</mat-icon>
       </button>
 
-      <button class="profile-button" type="button" aria-label="Open user menu">
-        <span class="avatar">{{ user().initials }}</span>
-        <span class="profile-copy">
-          <span>{{ user().displayName }}</span>
-          <small>{{ user().department }}</small>
-        </span>
-        <mat-icon aria-hidden="true">expand_more</mat-icon>
-      </button>
+      <app-user-menu />
     </div>
   </header>
 
   <main class="assets-content">
-    @if (selectedAssetDetail(); as detail) {
+    @if (selectedAsset(); as detail) {
       <section class="asset-detail" aria-labelledby="asset-detail-title">
         <button class="back-button" type="button" (click)="closeAssetDetail()">
           <mat-icon aria-hidden="true">arrow_back</mat-icon>
@@ -112,6 +105,103 @@
           </div>
         </section>
 
+        @if (canManageAssets()) {
+          <section class="asset-actions" aria-label="Asset actions">
+            <div class="asset-actions__buttons">
+              <button type="button" (click)="openAction('return')">Return</button>
+              <button type="button" (click)="openAction('transfer')">Transfer</button>
+              <button type="button" (click)="openAction('maintenance')">Start maintenance</button>
+              <button type="button" (click)="openAction('dispose')">Dispose</button>
+            </div>
+
+            @if (statusMessage()) {
+              <p class="status-message" role="status">{{ statusMessage() }}</p>
+            }
+
+            @if (actionMode(); as mode) {
+              <form class="action-form" (ngSubmit)="submitAction()">
+                @if (mode === 'transfer') {
+                  <label>
+                    <span>Transfer to</span>
+                    <select
+                      [value]="transferUserId()"
+                      (change)="onTextChange(transferUserId.set, $event)"
+                    >
+                      <option value="">Select a user…</option>
+                      @for (u of users(); track u.id) {
+                        <option [value]="u.id">{{ u.fullName }} ({{ u.userName }})</option>
+                      }
+                    </select>
+                  </label>
+                }
+
+                @if (mode === 'maintenance') {
+                  <label>
+                    <span>Type</span>
+                    <select
+                      [value]="maintenanceType()"
+                      (change)="onSelectChange(maintenanceType.set, $event)"
+                    >
+                      @for (type of maintenanceTypes; track type; let i = $index) {
+                        <option [value]="i">{{ type }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    <span>Vendor</span>
+                    <input type="text" [value]="maintenanceVendor()" (input)="onTextChange(maintenanceVendor.set, $event)" />
+                  </label>
+                  <label>
+                    <span>Cost</span>
+                    <input type="number" [value]="maintenanceCost()" (input)="onTextChange(maintenanceCost.set, $event)" />
+                  </label>
+                }
+
+                @if (mode === 'dispose') {
+                  <label>
+                    <span>Type</span>
+                    <select
+                      [value]="disposalType()"
+                      (change)="onSelectChange(disposalType.set, $event)"
+                    >
+                      @for (type of disposalTypes; track type; let i = $index) {
+                        <option [value]="i">{{ type }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    <span>Sold to (optional)</span>
+                    <select [value]="disposalSoldTo()" (change)="onTextChange(disposalSoldTo.set, $event)">
+                      <option value="">None</option>
+                      @for (u of users(); track u.id) {
+                        <option [value]="u.id">{{ u.fullName }} ({{ u.userName }})</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    <span>Sale price</span>
+                    <input type="number" [value]="disposalPrice()" (input)="onTextChange(disposalPrice.set, $event)" />
+                  </label>
+                }
+
+                <label>
+                  <span>{{ mode === 'dispose' ? 'Reason' : 'Notes' }}</span>
+                  <input type="text" [value]="actionNotes()" (input)="updateActionNotes($event)" />
+                </label>
+
+                @if (actionError()) {
+                  <p class="login-error" role="alert">{{ actionError() }}</p>
+                }
+
+                <div class="action-form__buttons">
+                  <button type="submit" class="primary-action">Confirm</button>
+                  <button type="button" (click)="closeActionPanel()">Cancel</button>
+                </div>
+              </form>
+            }
+          </section>
+        }
+
         <section class="detail-tabs" aria-label="Asset detail sections">
           <div class="tab-list" role="tablist" aria-label="Asset information">
             <button class="tab tab--active" type="button" role="tab" aria-selected="true">Overview</button>
@@ -165,6 +255,13 @@
         }
       </section>
 
+      @if (errorMessage()) {
+        <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+      }
+      @if (statusMessage()) {
+        <p class="status-message" role="status">{{ statusMessage() }}</p>
+      }
+
       <section class="toolbar" aria-label="Asset filters">
         <label class="asset-search" for="asset-search">
           <mat-icon aria-hidden="true">search</mat-icon>
@@ -183,16 +280,16 @@
           placeholder="All statuses"
           [options]="statuses"
           [value]="statusFilter()"
-          (valueChange)="statusFilter.set($event)"
+          (valueChange)="setStatusFilter($event)"
         ></app-filter-select>
 
         <app-filter-select
           class="select-button--model"
           label="Filter by model"
           placeholder="All models"
-          [options]="models"
+          [options]="models()"
           [value]="modelFilter()"
-          (valueChange)="modelFilter.set($event)"
+          (valueChange)="setModelFilter($event)"
         ></app-filter-select>
       </section>
 
@@ -211,7 +308,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (asset of filteredAssets(); track asset.code) {
+              @for (asset of filteredAssets(); track asset.id) {
                 <tr>
                   <td class="asset-code">{{ asset.code }}</td>
                   <td>{{ asset.serial }}</td>
@@ -241,7 +338,9 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td class="empty-row" colspan="7">No assets match your search.</td>
+                  <td class="empty-row" colspan="7">
+                    {{ isLoading() ? 'Loading assets…' : 'No assets match your search.' }}
+                  </td>
                 </tr>
               }
             </tbody>
@@ -249,10 +348,11 @@
         </div>
 
         <footer class="table-footer">
-          <span>Showing {{ filteredAssets().length }} of {{ assets.length }}</span>
+          <span>Showing {{ filteredAssets().length }} of {{ total() }}</span>
           <nav class="pagination" aria-label="Assets pagination">
-            <button type="button">Previous</button>
-            <button type="button">Next</button>
+            <button type="button" (click)="prevPage()" [disabled]="page() <= 1">Previous</button>
+            <span class="pagination__page">Page {{ page() }} of {{ totalPages() || 1 }}</span>
+            <button type="button" (click)="nextPage()" [disabled]="page() >= totalPages()">Next</button>
           </nav>
         </footer>
       </section>

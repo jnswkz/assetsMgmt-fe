@@ -1,3 +1,4 @@
+import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { FilterSelect } from '../filter-select/filter-select';
@@ -83,7 +84,7 @@ const ASSET_MODELS: readonly AssetModel[] = [
 
 @Component({
   selector: 'app-asset-catalog-page',
-  imports: [FilterSelect, MatIconModule],
+  imports: [FilterSelect, MatIconModule, UserMenu],
   templateUrl: './asset-catalog-page.html',
   styleUrl: './asset-catalog-page.css',
 })
@@ -91,7 +92,7 @@ export class AssetCatalogPage {
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
 
-  protected readonly user = this.auth.currentUser;
+  protected readonly user = this.auth.profile;
   protected readonly models = ASSET_MODELS;
   protected readonly globalSearch = signal('');
   protected readonly modelSearch = signal('');
