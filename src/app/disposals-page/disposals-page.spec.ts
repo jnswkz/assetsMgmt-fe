@@ -7,9 +7,9 @@ import { DisposalsPage } from './disposals-page';
 
 const DISPOSALS: readonly DisposalDto[] = [
   disposal('disposal-20', 'AH-0020', 0, 'Hugo Schmidt', 380, 'Sold after device refresh cycle.'),
-  disposal('disposal-13', 'AH-0013', 1, null, null, 'Lost in transit; insurance claim filed.'),
+  disposal('disposal-13', 'AH-0013', 1, null, null, 'Scrapped after failed repair.'),
   disposal('disposal-12', 'AH-0012', 2, null, null, 'Donated to local non-profit.'),
-  disposal('disposal-03', 'AH-0003', 3, null, null, 'Beyond economical repair.'),
+  disposal('disposal-03', 'AH-0003', 3, null, null, 'Lost in transit; insurance claim filed.'),
 ];
 
 describe('DisposalsPage', () => {
@@ -51,9 +51,9 @@ describe('DisposalsPage', () => {
       expect(compiled.textContent).toContain('Sold');
       expect(compiled.textContent).toContain('Hugo Schmidt');
       expect(compiled.textContent).toContain('$380');
-      expect(compiled.textContent).toContain('Lost in transit; insurance claim filed.');
+      expect(compiled.textContent).toContain('Scrapped after failed repair.');
       expect(compiled.textContent).toContain('Donated to local non-profit.');
-      expect(compiled.textContent).toContain('Beyond economical repair.');
+      expect(compiled.textContent).toContain('Lost in transit; insurance claim filed.');
       expect(compiled.querySelectorAll('tbody tr').length).toBe(4);
       fixture.destroy();
     }
@@ -67,7 +67,7 @@ describe('DisposalsPage', () => {
     fixture.detectChanges();
 
     expect(compiled.querySelectorAll('tbody tr').length).toBe(1);
-    expect(compiled.textContent).toContain('AH-0013');
+    expect(compiled.textContent).toContain('AH-0003');
     expect(compiled.textContent).toContain('Lost');
   });
 

@@ -5,10 +5,10 @@ import { Role } from './nav-item';
 
 export const ASSET_STATUS = [
   'In stock',
-  'Allocated',
   'Locked',
+  'Allocated',
   'Maintenance',
-  'End of life',
+  'Retired',
   'Lost',
   'Disposed',
 ] as const;
@@ -31,22 +31,22 @@ export const REQUEST_STATUS = [
   'Locked',
   'Approved',
   'Rejected',
-  'Cancelled',
   'Expired',
+  'Cancelled',
 ] as const;
 export type RequestStatusLabel = (typeof REQUEST_STATUS)[number];
 
 export const USER_ROLE = ['Employee', 'Manager', 'AdminIT'] as const;
 
-export const DISPOSAL_TYPE = ['Sold', 'Lost', 'Damaged', 'End of life'] as const;
+export const DISPOSAL_TYPE = ['Sold', 'Scrapped', 'Donated', 'Lost'] as const;
 export type DisposalTypeLabel = (typeof DISPOSAL_TYPE)[number];
 
 export const MAINTENANCE_TYPE = [
   'Repair',
   'Upgrade',
   'Inspection',
+  'Warranty claim',
   'Cleaning',
-  'Other',
 ] as const;
 
 export const MAINTENANCE_STATUS = ['In progress', 'Completed', 'Cancelled'] as const;
@@ -92,7 +92,7 @@ export function userRoleValue(role: Role): number {
 }
 
 export function disposalTypeLabel(value: number): DisposalTypeLabel {
-  return labelAt(DISPOSAL_TYPE, value, 'End of life');
+  return labelAt(DISPOSAL_TYPE, value, 'Scrapped');
 }
 
 export function maintenanceStatusLabel(value: number): string {

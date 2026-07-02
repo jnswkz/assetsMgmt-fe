@@ -16,6 +16,10 @@ export class AllocationsService {
     return this.api.get<readonly MyAssetItem[]>('/api/me/assets');
   }
 
+  downloadHandover(assetId: string): Observable<Blob> {
+    return this.api.getBlob(`/api/me/assets/${assetId}/handover`);
+  }
+
   history(query: AllocationHistoryQuery): Observable<PagedResult<AllocationHistoryItem>> {
     const params: QueryParams = { page: query.page, pageSize: query.pageSize };
     return this.api.get<PagedResult<AllocationHistoryItem>>('/api/allocations/history', params);

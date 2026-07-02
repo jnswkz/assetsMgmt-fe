@@ -108,6 +108,7 @@ describe('AssetsPage', () => {
 
     expect(compiled.textContent).toContain('Back to assets');
     expect(compiled.textContent).toContain('Scan to look up');
+    expect(compiled.querySelector<HTMLImageElement>('.qr-code')?.src).toBe('http://localhost:5046/qr/AH-0001.png');
     expect(compiled.textContent).toContain('Acquisition cost');
     expect(compiled.textContent).toContain('Standard issue dev laptop.');
 
@@ -177,7 +178,7 @@ function asset(
     currentHolderId: currentHolderName ? `user-${currentHolderName}` : null,
     currentHolderName,
     location,
-    qrCodePath: null,
+    qrCodePath: `/qr/${assetCode}.png`,
   };
 }
 

@@ -9,11 +9,13 @@ import { MyAssetItem } from '../models/api.model';
 import { assetStatusLabel } from '../models/enums';
 
 interface AssignedAsset {
+  readonly id: string;
   readonly code: string;
   readonly model: string;
   readonly status: string;
   readonly location: string;
   readonly assignedSince: string;
+  readonly handoverDocumentNumber: string | null;
 }
 
 @Component({
@@ -32,6 +34,8 @@ export class MyAssetsPage {
   protected readonly globalSearch = signal('');
   protected readonly isLoading = signal(true);
   protected readonly errorMessage = signal('');
+  protected readonly statusMessage = signal('');
+  protected readonly downloadingAssetId = signal<string | null>(null);
   protected readonly filteredAssignedAssets = computed(() =>
     this.assignedAssetsState().filter(asset =>
       matchesSearch(this.globalSearch(), [
@@ -40,6 +44,7 @@ export class MyAssetsPage {
         asset.status,
         asset.location,
         asset.assignedSince,
+        asset.handoverDocumentNumber,
       ])
     )
   );
@@ -50,6 +55,28 @@ export class MyAssetsPage {
 
   protected updateGlobalSearch(event: Event): void {
     this.globalSearch.set(controlValue(event));
+  }
+
+  protected downloadHandover(asset: AssignedAsset): void {
+    if (!asset.handoverDocumentNumber || this.downloadingAssetId()) {
+      return;
+    }
+
+    this.downloadingAssetId.set(asset.id);
+    this.statusMessage.set('');
+    this.errorMessage.set('');
+
+    this.allocations.downloadHandover(asset.id).subscribe({
+      next: file => {
+        triggerDownload(file, `${asset.handoverDocumentNumber}.pdf`);
+        this.statusMessage.set(`Downloaded ${asset.handoverDocumentNumber}.`);
+        this.downloadingAssetId.set(null);
+      },
+      error: () => {
+        this.errorMessage.set('Unable to download the handover document.');
+        this.downloadingAssetId.set(null);
+      },
+    });
   }
 
   private load(): void {
@@ -70,10 +97,24 @@ export class MyAssetsPage {
 
 function toAssignedAsset(item: MyAssetItem): AssignedAsset {
   return {
+    id: item.assetInstanceId,
     code: item.assetCode ?? '-',
     model: item.modelName ?? '-',
     status: assetStatusLabel(item.status),
     location: item.location ?? '-',
     assignedSince: (item.startDate ?? '').slice(0, 10) || '-',
+    handoverDocumentNumber: item.handoverDocumentNumber ?? null,
   };
+}
+
+function triggerDownload(file: Blob, fileName: string): void {
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }

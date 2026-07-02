@@ -35,6 +35,9 @@
     @if (errorMessage()) {
       <p class="empty-state" role="alert">{{ errorMessage() }}</p>
     }
+    @if (statusMessage()) {
+      <p class="status-message" role="status">{{ statusMessage() }}</p>
+    }
 
     <section class="assigned-grid" aria-label="Assigned assets">
       @for (asset of filteredAssignedAssets(); track asset.code) {
@@ -61,6 +64,20 @@
               <dd>{{ asset.assignedSince }}</dd>
             </div>
           </dl>
+
+          @if (asset.handoverDocumentNumber) {
+            <button
+              class="handover-button"
+              type="button"
+              [disabled]="downloadingAssetId() === asset.id"
+              (click)="downloadHandover(asset)"
+            >
+              <mat-icon aria-hidden="true">download</mat-icon>
+              <span>
+                {{ downloadingAssetId() === asset.id ? 'Downloading...' : 'Download handover' }}
+              </span>
+            </button>
+          }
         </article>
       } @empty {
         <article class="asset-card">

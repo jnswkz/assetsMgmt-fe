@@ -74,7 +74,7 @@ export class PendingApprovalsPage {
   }
 
   protected reject(approval: PendingApproval): void {
-    this.requestsApi.reject(approval.id, { reason: null }).subscribe({
+    this.requestsApi.reject(approval.id, { reason: 'Rejected from approvals page.' }).subscribe({
       next: () => this.finishDecision(approval, 'Rejected'),
       error: () => this.errorMessage.set(`Unable to reject ${approval.assetCode}.`),
     });

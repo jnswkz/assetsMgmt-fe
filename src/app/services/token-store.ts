@@ -22,6 +22,18 @@ export class TokenStore {
   readonly refreshToken = this.refreshTokenState.asReadonly();
   readonly hasSession = computed(() => this.accessTokenState() !== null);
 
+  syncFromStorage(): void {
+    const accessToken = this.read(ACCESS_KEY);
+    const refreshToken = this.read(REFRESH_KEY);
+
+    if (this.accessTokenState() !== accessToken) {
+      this.accessTokenState.set(accessToken);
+    }
+    if (this.refreshTokenState() !== refreshToken) {
+      this.refreshTokenState.set(refreshToken);
+    }
+  }
+
   set(tokens: TokenResponse): void {
     this.accessTokenState.set(tokens.accessToken);
     this.refreshTokenState.set(tokens.refreshToken);

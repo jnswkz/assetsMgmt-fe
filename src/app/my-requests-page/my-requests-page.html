@@ -30,11 +30,18 @@
         <h1 id="requests-title">My requests</h1>
         <p>Requests you've submitted across all assets.</p>
       </div>
+
+      <button class="primary-action" type="button" (click)="openCreateDialog()">
+        <mat-icon aria-hidden="true">add</mat-icon>
+        New request
+      </button>
     </section>
 
     @if (errorMessage()) {
       <p class="empty-state" role="alert">{{ errorMessage() }}</p>
     }
+
+    <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
 
     <section class="requests-card" aria-label="My requests table">
       <div class="table-wrap">
@@ -142,5 +149,162 @@
         </dl>
       </section>
     </aside>
+  }
+
+  @if (isCreateDialogOpen()) {
+    <button class="dialog-backdrop" type="button" aria-label="Close new request dialog" (click)="closeCreateDialog()"></button>
+    <section
+      class="request-dialog"
+      aria-labelledby="new-request-title"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+      cdkTrapFocus
+      cdkTrapFocusAutoCapture
+      (keydown.escape)="closeCreateDialog()"
+    >
+      <header class="drawer-header">
+        <div>
+          <h2 id="new-request-title">New request</h2>
+          <p>Ask for an available asset and include any timing or context.</p>
+        </div>
+        <button class="drawer-close" type="button" aria-label="Close new request dialog" (click)="closeCreateDialog()">
+          <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+      </header>
+
+      <form class="request-form" (submit)="$event.preventDefault(); submitRequest()">
+        @if (toastMessage()) {
+          <p class="request-toast" role="alert">{{ toastMessage() }}</p>
+        }
+
+        <section class="request-models" aria-label="Requestable asset models">
+          <div class="request-models__filters">
+            <label class="request-models__search" for="request-model-search">
+              <mat-icon aria-hidden="true">search</mat-icon>
+              <input
+                id="request-model-search"
+                type="search"
+                placeholder="Search models..."
+                [value]="modelSearch()"
+                (input)="updateModelSearch($event)"
+              />
+            </label>
+
+            <app-filter-select
+              class="request-models__category"
+              label="Filter by category"
+              placeholder="All categories"
+              [options]="modelCategories"
+              [value]="modelCategoryFilter()"
+              (valueChange)="setModelCategoryFilter($event)"
+            ></app-filter-select>
+          </div>
+
+          <label class="request-model-picker">
+            Asset model
+            <div class="request-model-picker__control">
+              <button
+                class="request-model-picker__trigger"
+                type="button"
+                [attr.aria-expanded]="isModelMenuOpen()"
+                aria-haspopup="listbox"
+                aria-label="Select an asset model"
+                (click)="toggleModelMenu()"
+                (keydown.escape)="closeModelMenu()"
+              >
+                @if (selectedRequestableModel(); as selectedModel) {
+                  <span class="request-model-picker__summary">
+                    <strong>{{ selectedModel.name }}</strong>
+                    <span>{{ selectedModel.category }} · {{ selectedModel.manufacturer }} · {{ selectedModel.instanceCount }} catalog instances</span>
+                  </span>
+                } @else {
+                  <span class="request-model-picker__placeholder">Select a model</span>
+                }
+                <mat-icon aria-hidden="true">expand_more</mat-icon>
+              </button>
+
+              @if (isModelMenuOpen()) {
+                <button
+                  class="request-model-picker__backdrop"
+                  type="button"
+                  aria-label="Close asset model selector"
+                  (click)="closeModelMenu()"
+                ></button>
+
+                <div class="request-model-picker__menu" role="listbox" aria-label="Asset models">
+                  @for (model of filteredRequestableModels(); track model.id) {
+                    <button
+                      class="request-model-picker__option"
+                      type="button"
+                      role="option"
+                      [class.request-model-picker__option--active]="model.id === selectedModelId()"
+                      [attr.aria-selected]="model.id === selectedModelId()"
+                      (click)="selectModel(model.id)"
+                    >
+                      <span class="request-model-picker__meta">
+                        <strong>{{ model.name }}</strong>
+                        <span>{{ model.category }} · {{ model.manufacturer }} · {{ model.modelNumber }}</span>
+                      </span>
+                      <span class="request-model-picker__stock">{{ model.instanceCount }} instances</span>
+                    </button>
+                  } @empty {
+                    <p class="request-model-picker__empty">No asset models match your search.</p>
+                  }
+                </div>
+              }
+            </div>
+          </label>
+        </section>
+
+        <section class="request-assets" aria-labelledby="request-assets-title">
+          <div class="request-assets__header">
+            <span id="request-assets-title">Available instances</span>
+            <span>{{ isLoadingRequestableAssets() ? 'Checking...' : filteredRequestableAssets().length + ' available' }}</span>
+          </div>
+
+          <div class="request-assets__list" role="listbox" aria-label="Available asset instances">
+            @if (isLoadingRequestableAssets()) {
+              <p class="request-assets__empty">Loading available instances...</p>
+            } @else {
+            @for (asset of filteredRequestableAssets(); track asset.id) {
+              <button
+                class="request-assets__option"
+                type="button"
+                role="option"
+                [class.request-assets__option--active]="asset.id === selectedAssetId()"
+                [attr.aria-selected]="asset.id === selectedAssetId()"
+                (click)="selectAsset(asset.id)"
+              >
+                <span class="request-assets__radio" aria-hidden="true"></span>
+                <span class="request-assets__meta">
+                  <strong>{{ asset.assetCode }}</strong>
+                  <span>{{ asset.label }}</span>
+                </span>
+              </button>
+            } @empty {
+              <p class="request-assets__empty">No in-stock instances are available for this model.</p>
+            }
+            }
+          </div>
+        </section>
+
+        <label>
+          Reason
+          <textarea rows="5" [value]="requestReason()" (input)="updateRequestReason($event)"></textarea>
+        </label>
+
+        @if (formError()) {
+          <p class="form-error" role="alert">{{ formError() }}</p>
+        }
+
+        <div class="dialog-actions">
+          <button class="secondary-action" type="button" (click)="closeCreateDialog()">Cancel</button>
+          <button class="primary-action" type="submit" [disabled]="isSubmitting()">
+            {{ isSubmitting() ? 'Sending…' : 'Send request' }}
+          </button>
+        </div>
+      </form>
+    </section>
   }
 </div>

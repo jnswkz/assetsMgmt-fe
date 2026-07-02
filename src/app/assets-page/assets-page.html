@@ -34,18 +34,21 @@
 
         <section class="detail-summary" aria-label="Asset summary">
           <div class="qr-panel" aria-label="QR code for {{ detail.asset.code }}">
-            <div class="qr-code" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <small>Scan to look up</small>
+            @if (detail.asset.qrCodeUrl) {
+              <img
+                class="qr-code"
+                [src]="detail.asset.qrCodeUrl"
+                [alt]="'QR code for ' + detail.asset.code"
+                height="120"
+                width="120"
+              />
+              <small>Scan to look up</small>
+            } @else {
+              <div class="qr-code qr-code--empty" aria-hidden="true">
+                <mat-icon>qr_code_2</mat-icon>
+              </div>
+              <small>QR not available</small>
+            }
           </div>
 
           <div class="detail-copy">

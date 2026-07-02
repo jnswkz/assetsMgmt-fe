@@ -22,6 +22,7 @@ export interface AssetInstanceListItem {
   readonly currentHolderName: string | null;
   readonly location: string | null;
   readonly qrCodePath: string | null;
+  readonly qrCodeUrl?: string | null;
 }
 
 export interface AssetInstanceDto extends AssetInstanceListItem {
@@ -59,7 +60,7 @@ export interface TransferAssetDto {
 
 export interface StartMaintenanceDto {
   readonly type: number;
-  readonly description?: string | null;
+  readonly description: string;
   readonly vendor?: string | null;
   readonly cost?: number | null;
 }
@@ -98,6 +99,10 @@ export interface MyAssetItem {
   readonly status: number;
   readonly location: string | null;
   readonly startDate: string;
+  readonly allocationRequestId?: string | null;
+  readonly handoverDocumentNumber?: string | null;
+  readonly handoverFilePath?: string | null;
+  readonly handoverFileUrl?: string | null;
 }
 
 // --- Asset models ---
@@ -179,7 +184,7 @@ export interface CreateRequestDto {
 }
 
 export interface RejectRequestDto {
-  readonly reason?: string | null;
+  readonly reason: string;
 }
 
 export interface HandoverResult {

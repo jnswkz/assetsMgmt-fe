@@ -2,7 +2,7 @@ import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { ReportsService } from '../services/reports.service';
@@ -40,13 +40,26 @@ interface RequestRow {
 // Stable colors per asset status index (matches enums.ASSET_STATUS order).
 const STATUS_COLORS = [
   '#10b981', // In stock
-  '#3b82f6', // Allocated
   '#f59e0b', // Locked
+  '#3b82f6', // Allocated
   '#f97316', // Maintenance
-  '#9ca3af', // End of life
+  '#9ca3af', // Retired
   '#ef4444', // Lost
   '#1f2937', // Disposed
 ];
+
+const EMPTY_DASHBOARD_STATS: DashboardStatsDto = {
+  totalAssets: 0,
+  inStock: 0,
+  allocated: 0,
+  lockedTemp: 0,
+  maintenance: 0,
+  endOfLife: 0,
+  pendingRequests: 0,
+  totalAcquisitionCost: 0,
+  byStatus: [],
+  byCategory: [],
+};
 
 @Component({
   selector: 'app-dashboard-page',
@@ -111,12 +124,13 @@ export class DashboardPage {
     const requests$ = employeeView
       ? this.requestsApi.mine({ page: 1, pageSize: 6 })
       : this.requestsApi.pending({ page: 1, pageSize: 6 });
+    const stats$ = employeeView ? of(EMPTY_DASHBOARD_STATS) : this.reports.dashboard();
 
     this.isLoading.set(true);
     this.errorMessage.set('');
 
     forkJoin({
-      stats: this.reports.dashboard(),
+      stats: stats$,
       requests: requests$,
     }).subscribe({
       next: ({ stats, requests }) => {

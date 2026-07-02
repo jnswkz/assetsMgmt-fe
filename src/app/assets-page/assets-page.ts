@@ -8,6 +8,7 @@ import { ThemeService } from '../services/theme.service';
 import { AssetsService } from '../services/assets.service';
 import { UsersService } from '../services/users.service';
 import { controlValue, matchesSearch } from '../utils/search';
+import { environment } from '../../environments/environment';
 import {
   AssetInstanceDto,
   AssetInstanceListItem,
@@ -16,7 +17,14 @@ import {
   PagedResult,
   UserListItem,
 } from '../models/api.model';
-import { ASSET_STATUS, DISPOSAL_TYPE, MAINTENANCE_TYPE, assetStatusLabel, assetStatusValue } from '../models/enums';
+import {
+  ASSET_STATUS,
+  DISPOSAL_TYPE,
+  MAINTENANCE_TYPE,
+  DisposalTypeLabel,
+  assetStatusLabel,
+  assetStatusValue,
+} from '../models/enums';
 
 interface AssetRow {
   readonly id: string;
@@ -37,6 +45,7 @@ interface AssetDetailView {
     readonly serial: string;
     readonly currentHolder: string;
     readonly location: string;
+    readonly qrCodeUrl: string | null;
   };
   readonly manufacturer: string;
   readonly acquisitionCost: string;
@@ -291,6 +300,9 @@ export class AssetsPage {
     this.maintenanceCost.set('');
     this.disposalSoldTo.set('');
     this.disposalPrice.set('');
+    if (mode === 'dispose') {
+      this.disposalType.set(disposalTypeValue('Scrapped'));
+    }
     if ((mode === 'transfer' || mode === 'dispose') && this.users().length === 0) {
       this.usersApi.list({ page: 1, pageSize: 200 }).subscribe(result => this.users.set(result.items));
     }
@@ -340,16 +352,26 @@ export class AssetsPage {
           .subscribe({ next: () => done('Asset transferred'), error: fail });
         break;
       case 'maintenance':
+        if (!this.actionNotes().trim()) {
+          this.actionError.set('Enter maintenance notes.');
+          return;
+        }
         this.assetsApi
           .startMaintenance(id, {
             type: this.maintenanceType(),
-            description: this.actionNotes() || null,
+            description: this.actionNotes().trim(),
             vendor: this.maintenanceVendor() || null,
             cost: numberOrNull(this.maintenanceCost()),
           })
           .subscribe({ next: () => done('Maintenance started'), error: fail });
         break;
       case 'dispose':
+        if (this.disposalType() === disposalTypeValue('Sold')) {
+          if (!this.disposalSoldTo() || numberOrNull(this.disposalPrice()) === null) {
+            this.actionError.set('Choose a buyer and sale price for sold assets.');
+            return;
+          }
+        }
         this.assetsApi
           .dispose(id, {
             type: this.disposalType(),
@@ -437,6 +459,10 @@ export class AssetsPage {
     }
     if (!form.acquisitionDate) {
       this.instanceError.set('Acquisition date is required.');
+      return;
+    }
+    if (!form.serial.trim()) {
+      this.instanceError.set('Serial is required.');
       return;
     }
 
@@ -536,6 +562,10 @@ export class AssetsPage {
   }
 }
 
+function disposalTypeValue(label: DisposalTypeLabel): number {
+  return DISPOSAL_TYPE.indexOf(label);
+}
+
 function toRow(item: AssetInstanceListItem): AssetRow {
   return {
     id: item.id,
@@ -567,6 +597,7 @@ function toDetail(
       serial: dto.serial ?? '-',
       currentHolder: dto.currentHolderName ?? '-',
       location: dto.location ?? '-',
+      qrCodeUrl: toAssetUrl(dto.qrCodeUrl ?? dto.qrCodePath),
     },
     manufacturer: extra.manufacturer,
     acquisitionCost: formatCurrency(dto.acquisitionCost),
@@ -579,6 +610,17 @@ function toDetail(
     maintenanceRecords: extra.maintenanceRecords,
     allocationEvents: extra.allocationEvents,
   };
+}
+
+function toAssetUrl(pathOrUrl: string | null | undefined): string | null {
+  if (!pathOrUrl) {
+    return null;
+  }
+  try {
+    return new URL(pathOrUrl, environment.apiBaseUrl).toString();
+  } catch {
+    return pathOrUrl;
+  }
 }
 
 function formatCurrency(value: number | null): string {

@@ -7,8 +7,9 @@ import { ThemeService } from '../services/theme.service';
 import { DisposalsService } from '../services/disposals.service';
 import { controlValue, matchesSearch } from '../utils/search';
 import { DisposalDto } from '../models/api.model';
+import { DISPOSAL_TYPE, DisposalTypeLabel } from '../models/enums';
 
-type DisposalType = 'Sold' | 'Lost' | 'Donated' | 'Scrapped';
+type DisposalType = DisposalTypeLabel;
 
 interface DisposalRecord {
   readonly assetCode: string;
@@ -18,7 +19,7 @@ interface DisposalRecord {
   readonly reason: string;
   readonly disposed: string;
 }
-const DISPOSAL_TYPES: readonly DisposalType[] = ['Sold', 'Lost', 'Donated', 'Scrapped'];
+const DISPOSAL_TYPES: readonly DisposalType[] = DISPOSAL_TYPE;
 
 @Component({
   selector: 'app-disposals-page',

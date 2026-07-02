@@ -77,30 +77,21 @@ dt {
 }
 
 .qr-code {
-  background:
-    linear-gradient(#0a0a0a 0 0) 0 0 / 34px 34px no-repeat,
-    linear-gradient(#0a0a0a 0 0) 86px 0 / 34px 34px no-repeat,
-    linear-gradient(#0a0a0a 0 0) 0 86px / 34px 34px no-repeat,
-    #ffffff;
+  background: #ffffff;
   border: 8px solid #ffffff;
   box-shadow: inset 0 0 0 1px #d4d4d8;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(3, 1fr);
+  box-sizing: border-box;
+  display: block;
   height: 120px;
   margin-bottom: 8px;
-  padding: 42px 26px 18px 42px;
+  object-fit: contain;
   width: 120px;
 }
 
-.qr-code span {
-  background: #0a0a0a;
-}
-
-.qr-code span:nth-child(2),
-.qr-code span:nth-child(5),
-.qr-code span:nth-child(7) {
-  opacity: 0;
+.qr-code--empty {
+  color: var(--muted);
+  display: grid;
+  place-items: center;
 }
 
 .detail-title-row {

@@ -29,6 +29,16 @@ export class ApiService {
     return this.http.get<T>(this.url(path), { params: toHttpParams(params) });
   }
 
+  getBlob(path: string, params?: QueryParams): Observable<Blob> {
+    if (!this.isBrowser) {
+      return EMPTY;
+    }
+    return this.http.get(this.url(path), {
+      params: toHttpParams(params),
+      responseType: 'blob',
+    });
+  }
+
   post<T>(path: string, body?: unknown): Observable<T> {
     if (!this.isBrowser) {
       return EMPTY;

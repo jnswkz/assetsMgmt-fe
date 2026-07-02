@@ -33,6 +33,7 @@ export interface UserProfile {
 }
 
 export type SessionState = 'checking' | 'authenticated' | 'anonymous';
+const PROFILE_KEY = 'am.me';
 
 const GUEST_PROFILE: UserProfile = {
   userName: '',
@@ -87,6 +88,7 @@ export class AuthService {
   private readonly sessionStateInternal = signal<SessionState>(
     this.tokens.hasSession() ? 'checking' : 'anonymous'
   );
+  private restoreStarted = false;
   /** A single shared refresh so concurrent 401s don't start a refresh storm. */
   private refreshInFlight: Observable<string | null> | null = null;
 
@@ -101,9 +103,8 @@ export class AuthService {
   private readonly sessionState$ = toObservable(this.sessionState).pipe(distinctUntilChanged());
 
   constructor() {
-    if (this.isBrowser && this.tokens.hasSession() && this.currentUserState() === null) {
-      this.restoreSession();
-    }
+    this.seedSessionFromBrowserState();
+    this.ensureSessionRestoreStarted();
   }
 
   login(userName: string, password: string): Observable<boolean> {
@@ -164,6 +165,7 @@ export class AuthService {
       .pipe(
         tap(me => {
           this.currentUserState.set(me);
+          this.writeCachedUser(me);
           this.sessionStateInternal.set('authenticated');
         })
       );
@@ -176,23 +178,96 @@ export class AuthService {
     );
   }
 
-  private restoreSession(): void {
-    this.sessionStateInternal.set('checking');
+  /** Starts one browser-side restore pass from stored tokens, if any exist. */
+  ensureSessionRestoreStarted(): void {
+    this.tokens.syncFromStorage();
+
+    if (!this.isBrowser || this.restoreStarted || !this.tokens.hasSession()) {
+      return;
+    }
+
+    const hadSeededUser = this.currentUserState() !== null;
+    this.restoreStarted = true;
+    if (!hadSeededUser) {
+      this.sessionStateInternal.set('checking');
+    }
+
     this.loadCurrentUser().subscribe({
       error: (error: unknown) => {
         if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403)) {
           this.clearSession();
+          void this.injector.get(Router).navigateByUrl('/login');
           return;
         }
-        this.sessionStateInternal.set('anonymous');
+        if (!hadSeededUser) {
+          this.sessionStateInternal.set('anonymous');
+        }
       },
     });
   }
 
   private clearSession(): void {
     this.tokens.clear();
+    this.removeCachedUser();
     this.currentUserState.set(null);
     this.sessionStateInternal.set('anonymous');
+    this.restoreStarted = false;
+  }
+
+  private seedSessionFromBrowserState(): void {
+    if (!this.isBrowser || this.currentUserState() !== null) {
+      return;
+    }
+
+    this.tokens.syncFromStorage();
+    if (!this.tokens.hasSession()) {
+      return;
+    }
+
+    const cachedUser = this.readCachedUser() ?? deriveProfileFromToken(this.tokens.accessToken());
+    if (!cachedUser) {
+      return;
+    }
+
+    this.currentUserState.set(cachedUser);
+    this.sessionStateInternal.set('authenticated');
+  }
+
+  private readCachedUser(): MeResponse | null {
+    const value = this.storage()?.getItem(PROFILE_KEY);
+    if (!value) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(value) as MeResponse;
+    } catch {
+      this.storage()?.removeItem(PROFILE_KEY);
+      return null;
+    }
+  }
+
+  private writeCachedUser(user: MeResponse): void {
+    try {
+      this.storage()?.setItem(PROFILE_KEY, JSON.stringify(user));
+    } catch {
+      // Ignore storage quota/private-mode failures; runtime auth still works.
+    }
+  }
+
+  private removeCachedUser(): void {
+    this.storage()?.removeItem(PROFILE_KEY);
+  }
+
+  private storage(): Storage | null {
+    if (!this.isBrowser || typeof window === 'undefined') {
+      return null;
+    }
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -217,4 +292,79 @@ function deriveProfile(me: MeResponse | null): UserProfile {
     department: me.departmentName ?? '',
     role: me.role,
   };
+}
+
+function deriveProfileFromToken(accessToken: string | null): MeResponse | null {
+  if (!accessToken) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(decodeJwtPayload(accessToken)) as Record<string, unknown>;
+    const role = readTokenRole(payload);
+    if (!role) {
+      return null;
+    }
+
+    const userName = readStringClaim(payload, ['unique_name', 'preferred_username', 'userName', 'sub']) ?? '';
+    const fullName =
+      readStringClaim(payload, ['name', 'fullName', 'given_name', 'unique_name', 'preferred_username']) ?? userName;
+    const email = readStringClaim(payload, ['email']) ?? '';
+
+    return {
+      id: readStringClaim(payload, ['nameid', 'sub']) ?? userName,
+      userName,
+      email,
+      fullName,
+      employeeCode: readStringClaim(payload, ['employeeCode']) ?? '',
+      role,
+      departmentId: readStringClaim(payload, ['departmentId']) ?? null,
+      departmentName: readStringClaim(payload, ['department', 'departmentName']) ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function decodeJwtPayload(token: string): string {
+  const [, payload = ''] = token.split('.');
+  const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+  return atob(padded);
+}
+
+function readStringClaim(payload: Record<string, unknown>, keys: readonly string[]): string | null {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function readTokenRole(payload: Record<string, unknown>): Role | null {
+  const roleClaims = [
+    payload['role'],
+    payload['roles'],
+    payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'],
+  ];
+
+  for (const claim of roleClaims) {
+    if (typeof claim === 'string' && isRole(claim)) {
+      return claim;
+    }
+    if (Array.isArray(claim)) {
+      const role = claim.find((value): value is Role => typeof value === 'string' && isRole(value));
+      if (role) {
+        return role;
+      }
+    }
+  }
+
+  return null;
+}
+
+function isRole(value: string): value is Role {
+  return value === 'AdminIT' || value === 'Manager' || value === 'Employee';
 }

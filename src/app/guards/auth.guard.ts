@@ -16,6 +16,7 @@ export const authGuard: CanActivateFn = () => {
 
   const auth = inject(AuthService);
   const router = inject(Router);
+  auth.ensureSessionRestoreStarted();
 
   if (auth.isSessionResolved()) {
     return auth.isAuthenticated() ? true : router.parseUrl('/login');
@@ -35,6 +36,7 @@ export const guestGuard: CanActivateFn = () => {
 
   const auth = inject(AuthService);
   const router = inject(Router);
+  auth.ensureSessionRestoreStarted();
 
   if (auth.isSessionResolved()) {
     return auth.isAuthenticated() ? router.parseUrl('/dashboard') : true;
