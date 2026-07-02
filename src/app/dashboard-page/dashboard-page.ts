@@ -5,10 +5,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
-import { ApiService } from '../services/api.service';
+import { ReportsService } from '../services/reports.service';
+import { RequestsService } from '../services/requests.service';
 import { Role } from '../models/nav-item';
 import { controlValue, matchesSearch } from '../utils/search';
-import { DashboardStatsDto, PagedResult, RequestListItem } from '../models/api.model';
+import { DashboardStatsDto, RequestListItem } from '../models/api.model';
 import { assetCategoryLabel, assetStatusLabel, requestStatusLabel } from '../models/enums';
 
 interface StatCard {
@@ -55,7 +56,8 @@ const STATUS_COLORS = [
 })
 export class DashboardPage {
   private readonly auth = inject(AuthService);
-  private readonly api = inject(ApiService);
+  private readonly reports = inject(ReportsService);
+  private readonly requestsApi = inject(RequestsService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.profile;
@@ -85,7 +87,7 @@ export class DashboardPage {
   );
 
   protected readonly view = computed(() => {
-    const role = this.auth.role();
+    const role = this.auth.role() ?? 'Employee';
     const employeeView = role === 'Employee';
     return {
       stats: buildStats(role, this.stats()),
@@ -106,14 +108,16 @@ export class DashboardPage {
 
   private load(): void {
     const employeeView = this.auth.role() === 'Employee';
-    const requestsPath = employeeView ? '/api/requests/mine' : '/api/requests/pending';
+    const requests$ = employeeView
+      ? this.requestsApi.mine({ page: 1, pageSize: 6 })
+      : this.requestsApi.pending({ page: 1, pageSize: 6 });
 
     this.isLoading.set(true);
     this.errorMessage.set('');
 
     forkJoin({
-      stats: this.api.get<DashboardStatsDto>('/api/reports/dashboard'),
-      requests: this.api.get<PagedResult<RequestListItem>>(requestsPath, { page: 1, pageSize: 6 }),
+      stats: this.reports.dashboard(),
+      requests: requests$,
     }).subscribe({
       next: ({ stats, requests }) => {
         this.stats.set(stats);

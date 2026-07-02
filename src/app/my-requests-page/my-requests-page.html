@@ -32,6 +32,10 @@
       </div>
     </section>
 
+    @if (errorMessage()) {
+      <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+    }
+
     <section class="requests-card" aria-label="My requests table">
       <div class="table-wrap">
         <table>
@@ -75,6 +79,9 @@
           </tbody>
         </table>
       </div>
+      @if (isLoading()) {
+        <p class="empty-state">Loading your requests…</p>
+      }
     </section>
   </main>
 

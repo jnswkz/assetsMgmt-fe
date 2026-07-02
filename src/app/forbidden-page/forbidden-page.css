@@ -1,0 +1,72 @@
+:host {
+  display: block;
+  min-height: 100svh;
+}
+
+.forbidden-page {
+  align-items: center;
+  background:
+    radial-gradient(circle at top, rgba(22, 163, 74, 0.12), transparent 36%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+  color: #0f172a;
+  display: flex;
+  justify-content: center;
+  min-height: 100svh;
+  padding: 32px 20px;
+}
+
+.forbidden-panel {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 18px;
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+  padding: 32px 28px;
+  text-align: center;
+}
+
+.forbidden-icon {
+  align-items: center;
+  background: #dcfce7;
+  border-radius: 999px;
+  color: #166534;
+  display: inline-flex;
+  height: 56px;
+  justify-content: center;
+  width: 56px;
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+p {
+  color: #475569;
+  line-height: 1.5;
+}
+
+.primary-link {
+  align-items: center;
+  background: #0f172a;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  gap: 8px;
+  padding: 10px 18px;
+  text-decoration: none;
+}
+
+.primary-link:hover {
+  background: #020617;
+}

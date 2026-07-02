@@ -33,6 +33,10 @@
         </div>
       </section>
 
+      @if (errorMessage()) {
+        <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+      }
+
       <section class="disposals-toolbar" aria-label="Disposal filters">
         <app-filter-select
           class="disposals-select"
@@ -40,7 +44,7 @@
           placeholder="All types"
           [options]="typeOptions"
           [value]="typeFilter()"
-          (valueChange)="typeFilter.set($event)"
+          (valueChange)="setTypeFilter($event)"
         ></app-filter-select>
       </section>
 
@@ -79,7 +83,9 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td class="empty-row" colspan="6">No disposals match your filters.</td>
+                  <td class="empty-row" colspan="6">
+                    {{ isLoading() ? 'Loading disposals…' : 'No disposals match your filters.' }}
+                  </td>
                 </tr>
               }
             </tbody>

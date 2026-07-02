@@ -1,17 +1,18 @@
 import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { Subject, debounceTime, forkJoin } from 'rxjs';
+import { Subject, catchError, debounceTime, forkJoin, of } from 'rxjs';
 import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { AssetsService } from '../services/assets.service';
-import { ApiService } from '../services/api.service';
+import { UsersService } from '../services/users.service';
 import { controlValue, matchesSearch } from '../utils/search';
 import {
   AssetInstanceDto,
   AssetInstanceListItem,
   AssetModelListItem,
+  CreateAssetInstanceRequest,
   PagedResult,
   UserListItem,
 } from '../models/api.model';
@@ -51,6 +52,28 @@ interface AssetDetailView {
 
 type ActionMode = 'return' | 'transfer' | 'maintenance' | 'dispose';
 
+interface InstanceForm {
+  modelId: string;
+  serial: string;
+  acquisitionCost: string;
+  acquisitionDate: string;
+  salvageValue: string;
+  location: string;
+  warrantyExpiresAt: string;
+  notes: string;
+}
+
+const EMPTY_INSTANCE_FORM: InstanceForm = {
+  modelId: '',
+  serial: '',
+  acquisitionCost: '',
+  acquisitionDate: '',
+  salvageValue: '',
+  location: '',
+  warrantyExpiresAt: '',
+  notes: '',
+};
+
 @Component({
   selector: 'app-assets-page',
   imports: [FilterSelect, MatIconModule, UserMenu],
@@ -60,11 +83,14 @@ type ActionMode = 'return' | 'transfer' | 'maintenance' | 'dispose';
 export class AssetsPage {
   private readonly auth = inject(AuthService);
   private readonly assetsApi = inject(AssetsService);
-  private readonly api = inject(ApiService);
+  private readonly usersApi = inject(UsersService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.profile;
-  protected readonly canManageAssets = computed(() => this.auth.role() !== 'Employee');
+  /** Manager + AdminIT can run lifecycle actions (transfer/return/maintenance/dispose). */
+  protected readonly canManageLifecycle = computed(() => this.auth.role() !== 'Employee');
+  /** Only AdminIT can create/edit/delete asset instances and see maintenance history. */
+  protected readonly canAdminAssets = computed(() => this.auth.role() === 'AdminIT');
 
   private readonly pageSize = 20;
   protected readonly page = signal(1);
@@ -103,6 +129,18 @@ export class AssetsPage {
   protected readonly users = signal<readonly UserListItem[]>([]);
   protected readonly maintenanceTypes = MAINTENANCE_TYPE;
   protected readonly disposalTypes = DISPOSAL_TYPE;
+
+  // Instance create/edit dialog (AdminIT only)
+  protected readonly isInstanceDialogOpen = signal(false);
+  protected readonly editingInstanceId = signal<string | null>(null);
+  protected readonly instanceForm = signal<InstanceForm>({ ...EMPTY_INSTANCE_FORM });
+  protected readonly instanceError = signal('');
+  protected readonly isSavingInstance = signal(false);
+  protected readonly deletingId = signal<string | null>(null);
+  protected readonly instanceDialogTitle = computed(() =>
+    this.editingInstanceId() ? 'Edit asset' : 'New asset'
+  );
+  protected readonly modelOptions = computed(() => this.modelList());
 
   protected readonly rows = computed<readonly AssetRow[]>(() =>
     (this.result()?.items ?? []).map(toRow)
@@ -198,10 +236,16 @@ export class AssetsPage {
 
   protected openAssetDetail(asset: AssetRow): void {
     this.closeActionPanel();
+    // Employees/Managers are 403'd on the maintenance list, so only AdminIT
+    // requests it; everyone gets history. Each sub-call is error-tolerant so a
+    // single failure doesn't blank the whole detail view.
+    const zeroPage: PagedResult<never> = { items: [], total: 0, page: 1, pageSize: 1, totalPages: 0 };
     forkJoin({
       detail: this.assetsApi.get(asset.id),
-      history: this.assetsApi.history(asset.id),
-      maintenance: this.assetsApi.maintenance(asset.id),
+      history: this.assetsApi.history(asset.id).pipe(catchError(() => of(zeroPage))),
+      maintenance: this.canAdminAssets()
+        ? this.assetsApi.maintenance(asset.id).pipe(catchError(() => of(zeroPage)))
+        : of(zeroPage),
     }).subscribe({
       next: ({ detail, history, maintenance }) => {
         this.assetsApi.model(detail.modelId).subscribe({
@@ -248,9 +292,7 @@ export class AssetsPage {
     this.disposalSoldTo.set('');
     this.disposalPrice.set('');
     if ((mode === 'transfer' || mode === 'dispose') && this.users().length === 0) {
-      this.api
-        .get<PagedResult<UserListItem>>('/api/users', { page: 1, pageSize: 200 })
-        .subscribe(result => this.users.set(result.items));
+      this.usersApi.list({ page: 1, pageSize: 200 }).subscribe(result => this.users.set(result.items));
     }
   }
 
@@ -333,6 +375,155 @@ export class AssetsPage {
         })
       )
     );
+  }
+
+  // --- Instance CRUD (AdminIT only) ---
+
+  protected openCreateInstance(): void {
+    if (!this.canAdminAssets()) {
+      return;
+    }
+    this.editingInstanceId.set(null);
+    this.instanceForm.set({
+      ...EMPTY_INSTANCE_FORM,
+      modelId: this.modelList()[0]?.id ?? '',
+    });
+    this.instanceError.set('');
+    this.isInstanceDialogOpen.set(true);
+  }
+
+  protected openEditInstance(): void {
+    const detail = this.selectedAsset();
+    if (!this.canAdminAssets() || !detail) {
+      return;
+    }
+    this.instanceError.set('');
+    this.editingInstanceId.set(detail.id);
+    this.assetsApi.get(detail.id).subscribe({
+      next: dto => {
+        this.instanceForm.set({
+          modelId: dto.modelId,
+          serial: dto.serial ?? '',
+          acquisitionCost: String(dto.acquisitionCost ?? ''),
+          acquisitionDate: (dto.acquisitionDate ?? '').slice(0, 10),
+          salvageValue: String(dto.salvageValue ?? ''),
+          location: dto.location ?? '',
+          warrantyExpiresAt: (dto.warrantyExpiresAt ?? '').slice(0, 10),
+          notes: dto.notes ?? '',
+        });
+        this.isInstanceDialogOpen.set(true);
+      },
+      error: () => this.errorMessage.set('Unable to load the asset for editing.'),
+    });
+  }
+
+  protected closeInstanceDialog(): void {
+    this.isInstanceDialogOpen.set(false);
+    this.editingInstanceId.set(null);
+  }
+
+  protected updateInstanceField(field: keyof InstanceForm, event: Event): void {
+    const value = controlValue(event);
+    this.instanceForm.update(current => ({ ...current, [field]: value }));
+  }
+
+  protected saveInstance(): void {
+    const form = this.instanceForm();
+    const editingId = this.editingInstanceId();
+
+    if (!editingId && !form.modelId) {
+      this.instanceError.set('Choose a model.');
+      return;
+    }
+    if (!form.acquisitionDate) {
+      this.instanceError.set('Acquisition date is required.');
+      return;
+    }
+
+    const acquisitionDate = new Date(form.acquisitionDate).toISOString();
+    const warrantyExpiresAt = form.warrantyExpiresAt
+      ? new Date(form.warrantyExpiresAt).toISOString()
+      : null;
+
+    this.isSavingInstance.set(true);
+    this.instanceError.set('');
+
+    if (editingId) {
+      this.assetsApi
+        .updateAsset(editingId, {
+          serial: form.serial.trim() || null,
+          acquisitionCost: Number(form.acquisitionCost) || 0,
+          acquisitionDate,
+          salvageValue: Number(form.salvageValue) || 0,
+          location: form.location.trim() || null,
+          warrantyExpiresAt,
+          notes: form.notes.trim() || null,
+        })
+        .subscribe({
+          next: () => this.onInstanceSaved('Asset updated', editingId),
+          error: () => this.onInstanceSaveError(),
+        });
+    } else {
+      const body: CreateAssetInstanceRequest = {
+        modelId: form.modelId,
+        serial: form.serial.trim() || null,
+        acquisitionCost: Number(form.acquisitionCost) || 0,
+        acquisitionDate,
+        salvageValue: numberOrNull(form.salvageValue),
+        location: form.location.trim() || null,
+        warrantyExpiresAt,
+        notes: form.notes.trim() || null,
+      };
+      this.assetsApi.createAsset(body).subscribe({
+        next: () => this.onInstanceSaved('Asset created', null),
+        error: () => this.onInstanceSaveError(),
+      });
+    }
+  }
+
+  private onInstanceSaved(message: string, editingId: string | null): void {
+    this.isSavingInstance.set(false);
+    this.statusMessage.set(message);
+    this.closeInstanceDialog();
+    if (editingId && this.selectedAsset()) {
+      this.refreshDetail(editingId);
+    }
+    this.load();
+  }
+
+  private onInstanceSaveError(): void {
+    this.isSavingInstance.set(false);
+    this.instanceError.set('Save failed. Check the fields and try again.');
+  }
+
+  protected askDeleteInstance(): void {
+    const detail = this.selectedAsset();
+    if (this.canAdminAssets() && detail) {
+      this.deletingId.set(detail.id);
+    }
+  }
+
+  protected cancelDeleteInstance(): void {
+    this.deletingId.set(null);
+  }
+
+  protected confirmDeleteInstance(): void {
+    const id = this.deletingId();
+    if (!id) {
+      return;
+    }
+    this.assetsApi.deleteAsset(id).subscribe({
+      next: () => {
+        this.statusMessage.set('Asset deleted');
+        this.deletingId.set(null);
+        this.closeAssetDetail();
+        this.load();
+      },
+      error: () => {
+        this.errorMessage.set('Delete failed. The asset may be allocated or in use.');
+        this.deletingId.set(null);
+      },
+    });
   }
 
   protected onSelectChange(target: (value: number) => void, event: Event): void {

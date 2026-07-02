@@ -4,7 +4,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
-import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
+import { DisposalsService } from '../services/disposals.service';
+import { controlValue, matchesSearch } from '../utils/search';
+import { DisposalDto } from '../models/api.model';
 
 type DisposalType = 'Sold' | 'Lost' | 'Donated' | 'Scrapped';
 
@@ -16,41 +18,7 @@ interface DisposalRecord {
   readonly reason: string;
   readonly disposed: string;
 }
-
-const DISPOSALS: readonly DisposalRecord[] = [
-  {
-    assetCode: 'AH-0020',
-    type: 'Sold',
-    soldTo: 'Hugo Schmidt',
-    salePrice: '$380',
-    reason: 'Sold at end of life to former employee.',
-    disposed: '2026-05-21',
-  },
-  {
-    assetCode: 'AH-0013',
-    type: 'Lost',
-    soldTo: '-',
-    salePrice: '-',
-    reason: 'Lost in transit; insurance claim filed.',
-    disposed: '2026-06-10',
-  },
-  {
-    assetCode: 'AH-0012',
-    type: 'Donated',
-    soldTo: '-',
-    salePrice: '-',
-    reason: 'Donated to local non-profit.',
-    disposed: '2026-05-01',
-  },
-  {
-    assetCode: 'AH-0018',
-    type: 'Scrapped',
-    soldTo: '-',
-    salePrice: '-',
-    reason: 'Beyond economical repair.',
-    disposed: '2026-04-11',
-  },
-];
+const DISPOSAL_TYPES: readonly DisposalType[] = ['Sold', 'Lost', 'Donated', 'Scrapped'];
 
 @Component({
   selector: 'app-disposals-page',
@@ -60,15 +28,19 @@ const DISPOSALS: readonly DisposalRecord[] = [
 })
 export class DisposalsPage {
   private readonly auth = inject(AuthService);
+  private readonly disposalsApi = inject(DisposalsService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.profile;
   protected readonly canView = computed(() => this.user().role === 'AdminIT' || this.user().role === 'Manager');
   protected readonly globalSearch = signal('');
   protected readonly typeFilter = signal('');
-  protected readonly typeOptions = uniqueStrings(DISPOSALS.map(record => record.type));
+  private readonly records = signal<readonly DisposalRecord[]>([]);
+  protected readonly isLoading = signal(true);
+  protected readonly errorMessage = signal('');
+  protected readonly typeOptions = DISPOSAL_TYPES;
   protected readonly filteredDisposals = computed(() =>
-    DISPOSALS.filter(record => {
+    this.records().filter(record => {
       const matchesType = this.typeFilter() === '' || record.type === this.typeFilter();
       const matchesQuery = matchesSearch(this.globalSearch(), [
         record.assetCode,
@@ -83,11 +55,58 @@ export class DisposalsPage {
     })
   );
 
+  constructor() {
+    if (this.canView()) {
+      this.load();
+    } else {
+      this.isLoading.set(false);
+    }
+  }
+
   protected updateGlobalSearch(event: Event): void {
     this.globalSearch.set(controlValue(event));
   }
 
-  protected updateTypeFilter(event: Event): void {
-    this.typeFilter.set(controlValue(event));
+  protected setTypeFilter(value: string): void {
+    this.typeFilter.set(value);
+    if (this.canView()) {
+      this.load();
+    }
   }
+
+  private load(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+    this.disposalsApi
+      .list({
+        type: this.typeFilter() === '' ? undefined : DISPOSAL_TYPES.indexOf(this.typeFilter() as DisposalType),
+        page: 1,
+        pageSize: 200,
+      })
+      .subscribe({
+        next: result => {
+          this.records.set(result.items.map(toDisposalRecord));
+          this.isLoading.set(false);
+        },
+        error: () => {
+          this.errorMessage.set('Unable to load disposals.');
+          this.isLoading.set(false);
+        },
+      });
+  }
+}
+
+function toDisposalRecord(item: DisposalDto): DisposalRecord {
+  return {
+    assetCode: item.assetCode ?? '-',
+    type: DISPOSAL_TYPES[item.disposalType] ?? 'Scrapped',
+    soldTo: item.soldToUserName ?? '-',
+    salePrice: item.salePrice === null ? '-' : formatCurrency(item.salePrice),
+    reason: item.reason ?? '-',
+    disposed: item.disposedAt.slice(0, 10),
+  };
+}
+
+function formatCurrency(value: number): string {
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 }

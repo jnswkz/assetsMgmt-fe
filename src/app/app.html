@@ -1,9 +1,19 @@
-@if (isLoginPage()) {
+@if (isAuthSplashVisible()) {
+  <main class="auth-splash" aria-live="polite">
+    <section class="auth-splash__panel" aria-label="Restoring session">
+      <span class="auth-splash__mark" aria-hidden="true"></span>
+      <div>
+        <h1>Restoring your workspace</h1>
+        <p>Loading your account, role, and navigation.</p>
+      </div>
+    </section>
+  </main>
+} @else if (isLoginPage()) {
   <router-outlet></router-outlet>
 } @else {
   <mat-sidenav-container class="app-shell">
     <mat-sidenav mode="side" opened class="app-sidenav">
-      <app-sidebar-nav [role]="auth.role()"></app-sidebar-nav>
+      <app-sidebar-nav [role]="auth.role() ?? 'Employee'"></app-sidebar-nav>
     </mat-sidenav>
 
     <mat-sidenav-content class="app-content">

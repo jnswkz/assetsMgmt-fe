@@ -25,4 +25,5 @@ export class App {
   );
 
   protected readonly isLoginPage = computed(() => this.currentUrl().startsWith('/login'));
+  protected readonly isAuthSplashVisible = computed(() => this.auth.isRestoringSession());
 }

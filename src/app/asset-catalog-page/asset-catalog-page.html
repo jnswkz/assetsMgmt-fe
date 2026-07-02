@@ -31,11 +31,20 @@
         <p>The library of asset models your organization purchases and manages.</p>
       </div>
 
-      <button class="primary-action" type="button">
-        <mat-icon aria-hidden="true">{{ canManageCatalog() ? 'add' : 'assignment_add' }}</mat-icon>
-        <span>{{ primaryActionLabel() }}</span>
-      </button>
+      @if (canManageCatalog()) {
+        <button class="primary-action" type="button" (click)="openCreate()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          <span>New model</span>
+        </button>
+      }
     </section>
+
+    @if (errorMessage()) {
+      <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+    }
+    @if (statusMessage()) {
+      <p class="status-message" role="status">{{ statusMessage() }}</p>
+    }
 
     <section class="toolbar" aria-label="Catalog filters">
       <label class="model-search" for="model-search">
@@ -55,17 +64,8 @@
         placeholder="All categories"
         [options]="categories"
         [value]="categoryFilter()"
-        (valueChange)="categoryFilter.set($event)"
+        (valueChange)="setCategoryFilter($event)"
       ></app-filter-select>
-
-      <div class="view-toggle" aria-label="View mode">
-        <button class="toggle-button toggle-button--active" type="button" aria-label="Table view">
-          <mat-icon aria-hidden="true">table_rows</mat-icon>
-        </button>
-        <button class="toggle-button" type="button" aria-label="Card view">
-          <mat-icon aria-hidden="true">grid_view</mat-icon>
-        </button>
-      </div>
     </section>
 
     <section class="catalog-card" aria-label="Asset model table">
@@ -83,7 +83,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (model of filteredModels(); track model.modelNumber) {
+            @for (model of filteredModels(); track model.id) {
               <tr>
                 <td>{{ model.name }}</td>
                 <td><span class="badge">{{ model.category }}</span></td>
@@ -93,25 +93,20 @@
                 <td>{{ model.instances }}</td>
                 <td class="row-actions">
                   @if (canManageCatalog()) {
-                    <button type="button" aria-label="Edit {{ model.name }}">
+                    <button type="button" aria-label="Edit {{ model.name }}" (click)="openEdit(model)">
                       <mat-icon aria-hidden="true">edit</mat-icon>
                     </button>
-                    <button type="button" aria-label="Delete {{ model.name }}">
+                    <button type="button" aria-label="Delete {{ model.name }}" (click)="askDelete(model)">
                       <mat-icon aria-hidden="true">delete</mat-icon>
-                    </button>
-                  } @else {
-                    <button type="button" aria-label="View {{ model.name }}">
-                      <mat-icon aria-hidden="true">visibility</mat-icon>
-                    </button>
-                    <button type="button" aria-label="Request {{ model.name }}">
-                      <mat-icon aria-hidden="true">add_task</mat-icon>
                     </button>
                   }
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td class="empty-row" colspan="7">No asset models match your search.</td>
+                <td class="empty-row" colspan="7">
+                  {{ isLoading() ? 'Loading asset models…' : 'No asset models match your search.' }}
+                </td>
               </tr>
             }
           </tbody>
@@ -119,8 +114,81 @@
       </div>
 
       <footer class="table-footer">
-        <span>Showing {{ filteredModels().length }} of {{ models.length }}</span>
+        <span>Showing {{ filteredModels().length }} of {{ total() }}</span>
+        <nav class="pagination" aria-label="Catalog pagination">
+          <button type="button" (click)="prevPage()" [disabled]="page() <= 1">Previous</button>
+          <span class="pagination__page">Page {{ page() }} of {{ totalPages() || 1 }}</span>
+          <button type="button" (click)="nextPage()" [disabled]="page() >= totalPages()">Next</button>
+        </nav>
       </footer>
     </section>
   </main>
+
+  @if (isDialogOpen()) {
+    <div class="dialog-backdrop" role="presentation" (click)="closeDialog()"></div>
+    <section class="model-dialog" role="dialog" aria-modal="true" aria-labelledby="model-dialog-title">
+      <h2 id="model-dialog-title">{{ dialogTitle() }}</h2>
+      <form class="model-form" (submit)="saveModel(); $event.preventDefault()">
+        <label>
+          <span>Name</span>
+          <input type="text" [value]="form().name" (input)="updateFormField('name', $event)" />
+        </label>
+        <label>
+          <span>Category</span>
+          <select [value]="form().category" (change)="updateFormNumber('category', $event)">
+            @for (cat of categories; track cat; let i = $index) {
+              <option [value]="i">{{ cat }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span>Manufacturer</span>
+          <input type="text" [value]="form().manufacturer" (input)="updateFormField('manufacturer', $event)" />
+        </label>
+        <label>
+          <span>Model number</span>
+          <input type="text" [value]="form().modelNumber" (input)="updateFormField('modelNumber', $event)" />
+        </label>
+        <label>
+          <span>Useful life (months)</span>
+          <input type="number" [value]="form().defaultUsefulLifeMonths" (input)="updateFormField('defaultUsefulLifeMonths', $event)" />
+        </label>
+        <label>
+          <span>Depreciation method</span>
+          <select [value]="form().defaultDepreciationMethod" (change)="updateFormNumber('defaultDepreciationMethod', $event)">
+            @for (method of depreciationMethods; track method; let i = $index) {
+              <option [value]="i">{{ method }}</option>
+            }
+          </select>
+        </label>
+        <label class="model-form__wide">
+          <span>Specs</span>
+          <input type="text" [value]="form().specs" (input)="updateFormField('specs', $event)" />
+        </label>
+
+        @if (formError()) {
+          <p class="login-error" role="alert">{{ formError() }}</p>
+        }
+
+        <div class="model-form__buttons">
+          <button type="submit" class="primary-action" [disabled]="isSaving()">
+            {{ isSaving() ? 'Saving…' : 'Save' }}
+          </button>
+          <button type="button" (click)="closeDialog()">Cancel</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (deletingId()) {
+    <div class="dialog-backdrop" role="presentation" (click)="cancelDelete()"></div>
+    <section class="model-dialog model-dialog--confirm" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+      <h2 id="delete-dialog-title">Delete this model?</h2>
+      <p>This permanently removes the asset model. Models with existing instances cannot be deleted.</p>
+      <div class="model-form__buttons">
+        <button type="button" class="danger-action" (click)="confirmDelete()">Delete</button>
+        <button type="button" (click)="cancelDelete()">Cancel</button>
+      </div>
+    </section>
+  }
 </div>

@@ -212,3 +212,56 @@ h2 {
     grid-template-columns: 1fr;
   }
 }
+
+.asset-actions {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.asset-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.asset-actions__buttons button {
+  background: var(--control-bg, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  height: 36px;
+  padding: 0 14px;
+}
+
+.action-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  max-width: 480px;
+}
+
+.action-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.action-form input,
+.action-form select {
+  background: var(--control-bg, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: var(--text);
+  height: 36px;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.action-form__buttons {
+  display: flex;
+  gap: 8px;
+}

@@ -34,6 +34,10 @@
         <p class="awaiting-count">{{ awaitingCount() }} awaiting</p>
       </section>
 
+      @if (errorMessage()) {
+        <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+      }
+
       <section class="approvals-card" aria-label="Pending approvals table">
         <div class="table-wrap">
           <table>
@@ -74,7 +78,7 @@
                         class="approve-button"
                         type="button"
                         aria-label="Approve request for {{ approval.assetCode }}"
-                        (click)="decide(approval, 'approved')"
+                        (click)="approve(approval)"
                       >
                         <mat-icon aria-hidden="true">check</mat-icon>
                         Approve
@@ -83,7 +87,7 @@
                         class="reject-button"
                         type="button"
                         aria-label="Reject request for {{ approval.assetCode }}"
-                        (click)="decide(approval, 'rejected')"
+                        (click)="reject(approval)"
                       >
                         <mat-icon aria-hidden="true">close</mat-icon>
                         Reject
@@ -93,7 +97,9 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td class="empty-row" colspan="8">No approvals match your search.</td>
+                  <td class="empty-row" colspan="8">
+                    {{ isLoading() ? 'Loading approvals…' : 'No approvals match your search.' }}
+                  </td>
                 </tr>
               }
             </tbody>

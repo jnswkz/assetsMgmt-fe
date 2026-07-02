@@ -51,6 +51,9 @@ export const MAINTENANCE_TYPE = [
 
 export const MAINTENANCE_STATUS = ['In progress', 'Completed', 'Cancelled'] as const;
 
+export const DEPRECIATION_METHOD = ['Straight line', 'Declining balance'] as const;
+export type DepreciationMethodLabel = (typeof DEPRECIATION_METHOD)[number];
+
 function labelAt<T extends string>(values: readonly T[], index: number, fallback: T): T {
   return values[index] ?? fallback;
 }
@@ -94,4 +97,8 @@ export function disposalTypeLabel(value: number): DisposalTypeLabel {
 
 export function maintenanceStatusLabel(value: number): string {
   return labelAt(MAINTENANCE_STATUS, value, 'In progress');
+}
+
+export function depreciationMethodLabel(value: number): DepreciationMethodLabel {
+  return labelAt(DEPRECIATION_METHOD, value, 'Straight line');
 }

@@ -520,6 +520,133 @@ dt {
   background: var(--soft);
 }
 
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pagination__page {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Shared status banner + modal dialog + form grid (catalog / assets CRUD) */
+.status-message {
+  background: rgba(16, 185, 129, 0.12);
+  border-radius: 8px;
+  color: #047857;
+  font-size: 13px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+}
+
+.danger-action {
+  background: #dc2626;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  height: 36px;
+  padding: 0 14px;
+}
+
+.dialog-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  border: 0;
+  cursor: pointer;
+  inset: 0;
+  position: fixed;
+  z-index: 20;
+}
+
+.model-dialog {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
+  left: 50%;
+  max-width: 560px;
+  padding: 24px;
+  position: fixed;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 32px));
+  z-index: 21;
+}
+
+.model-dialog h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.model-dialog--confirm p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+  margin: 0 0 20px;
+}
+
+.model-form {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.model-form label {
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.model-form__wide,
+.model-form__buttons {
+  grid-column: 1 / -1;
+}
+
+.model-form input,
+.model-form select {
+  background: var(--control-bg, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: var(--text);
+  height: 36px;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.model-form__buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.model-form__buttons button:not(.primary-action) {
+  background: var(--control-bg, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  height: 36px;
+  padding: 0 14px;
+}
+
+.model-form .login-error {
+  color: #c10007;
+  font-size: 13px;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .model-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 .status-chip {
   background: var(--chip-bg);
   border-radius: 999px;

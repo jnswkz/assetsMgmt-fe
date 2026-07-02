@@ -105,13 +105,19 @@
           </div>
         </section>
 
-        @if (canManageAssets()) {
+        @if (canManageLifecycle() || canAdminAssets()) {
           <section class="asset-actions" aria-label="Asset actions">
             <div class="asset-actions__buttons">
-              <button type="button" (click)="openAction('return')">Return</button>
-              <button type="button" (click)="openAction('transfer')">Transfer</button>
-              <button type="button" (click)="openAction('maintenance')">Start maintenance</button>
-              <button type="button" (click)="openAction('dispose')">Dispose</button>
+              @if (canManageLifecycle()) {
+                <button type="button" (click)="openAction('return')">Return</button>
+                <button type="button" (click)="openAction('transfer')">Transfer</button>
+                <button type="button" (click)="openAction('maintenance')">Start maintenance</button>
+                <button type="button" (click)="openAction('dispose')">Dispose</button>
+              }
+              @if (canAdminAssets()) {
+                <button type="button" (click)="openEditInstance()">Edit</button>
+                <button type="button" class="danger-action" (click)="askDeleteInstance()">Delete</button>
+              }
             </div>
 
             @if (statusMessage()) {
@@ -119,7 +125,7 @@
             }
 
             @if (actionMode(); as mode) {
-              <form class="action-form" (ngSubmit)="submitAction()">
+              <form class="action-form" (submit)="submitAction(); $event.preventDefault()">
                 @if (mode === 'transfer') {
                   <label>
                     <span>Transfer to</span>
@@ -247,8 +253,8 @@
           <p>Every physical asset unit, with status and current holder.</p>
         </div>
 
-        @if (canManageAssets()) {
-          <button class="primary-action" type="button">
+        @if (canAdminAssets()) {
+          <button class="primary-action" type="button" (click)="openCreateInstance()">
             <mat-icon aria-hidden="true">add</mat-icon>
             <span>New asset</span>
           </button>
@@ -358,4 +364,75 @@
       </section>
     }
   </main>
+
+  @if (isInstanceDialogOpen()) {
+    <div class="dialog-backdrop" role="presentation" (click)="closeInstanceDialog()"></div>
+    <section class="model-dialog" role="dialog" aria-modal="true" aria-labelledby="instance-dialog-title">
+      <h2 id="instance-dialog-title">{{ instanceDialogTitle() }}</h2>
+      <form class="model-form" (submit)="saveInstance(); $event.preventDefault()">
+        @if (!editingInstanceId()) {
+          <label>
+            <span>Model</span>
+            <select [value]="instanceForm().modelId" (change)="updateInstanceField('modelId', $event)">
+              <option value="">Select a model…</option>
+              @for (model of modelOptions(); track model.id) {
+                <option [value]="model.id">{{ model.name }}</option>
+              }
+            </select>
+          </label>
+        }
+        <label>
+          <span>Serial</span>
+          <input type="text" [value]="instanceForm().serial" (input)="updateInstanceField('serial', $event)" />
+        </label>
+        <label>
+          <span>Acquisition cost</span>
+          <input type="number" [value]="instanceForm().acquisitionCost" (input)="updateInstanceField('acquisitionCost', $event)" />
+        </label>
+        <label>
+          <span>Acquisition date</span>
+          <input type="date" [value]="instanceForm().acquisitionDate" (input)="updateInstanceField('acquisitionDate', $event)" />
+        </label>
+        <label>
+          <span>Salvage value</span>
+          <input type="number" [value]="instanceForm().salvageValue" (input)="updateInstanceField('salvageValue', $event)" />
+        </label>
+        <label>
+          <span>Warranty expiry</span>
+          <input type="date" [value]="instanceForm().warrantyExpiresAt" (input)="updateInstanceField('warrantyExpiresAt', $event)" />
+        </label>
+        <label>
+          <span>Location</span>
+          <input type="text" [value]="instanceForm().location" (input)="updateInstanceField('location', $event)" />
+        </label>
+        <label class="model-form__wide">
+          <span>Notes</span>
+          <input type="text" [value]="instanceForm().notes" (input)="updateInstanceField('notes', $event)" />
+        </label>
+
+        @if (instanceError()) {
+          <p class="login-error" role="alert">{{ instanceError() }}</p>
+        }
+
+        <div class="model-form__buttons">
+          <button type="submit" class="primary-action" [disabled]="isSavingInstance()">
+            {{ isSavingInstance() ? 'Saving…' : 'Save' }}
+          </button>
+          <button type="button" (click)="closeInstanceDialog()">Cancel</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (deletingId()) {
+    <div class="dialog-backdrop" role="presentation" (click)="cancelDeleteInstance()"></div>
+    <section class="model-dialog model-dialog--confirm" role="dialog" aria-modal="true" aria-labelledby="asset-delete-title">
+      <h2 id="asset-delete-title">Delete this asset?</h2>
+      <p>This permanently removes the asset instance. Allocated or in-use assets cannot be deleted.</p>
+      <div class="model-form__buttons">
+        <button type="button" class="danger-action" (click)="confirmDeleteInstance()">Delete</button>
+        <button type="button" (click)="cancelDeleteInstance()">Cancel</button>
+      </div>
+    </section>
+  }
 </div>

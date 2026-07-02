@@ -1,13 +1,15 @@
 import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { catchError, forkJoin, of } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
+import { RequestsService } from '../services/requests.service';
 import { controlValue, matchesSearch } from '../utils/search';
-
-type ApprovalDecision = 'approved' | 'rejected';
+import { AllocationRequestDto, RequestListItem } from '../models/api.model';
 
 interface PendingApproval {
+  readonly id: string;
   readonly requester: string;
   readonly assetCode: string;
   readonly model: string;
@@ -17,45 +19,6 @@ interface PendingApproval {
   readonly lockExpires: string;
 }
 
-const APPROVALS: readonly PendingApproval[] = [
-  {
-    requester: 'Chloe Davis',
-    assetCode: 'AH-0002',
-    model: 'MacBook Pro 14"',
-    reason: 'Replacement for failing battery on current laptop.',
-    duration: '24 mo',
-    submitted: '2026-06-28',
-    lockExpires: '2026-07-01',
-  },
-  {
-    requester: 'Ivy Tanaka',
-    assetCode: 'AH-0006',
-    model: 'ThinkPad X1 Carbon',
-    reason: 'New hire onboarding - Engineering.',
-    duration: '36 mo',
-    submitted: '2026-06-29',
-    lockExpires: '2026-07-02',
-  },
-  {
-    requester: 'Gina Patel',
-    assetCode: 'AH-0010',
-    model: 'Dell UltraSharp 27',
-    reason: 'Secondary monitor for design review work.',
-    duration: '18 mo',
-    submitted: '2026-06-27',
-    lockExpires: '-',
-  },
-  {
-    requester: 'Chloe Davis',
-    assetCode: 'AH-0015',
-    model: 'iPad Air',
-    reason: 'Field testing for upcoming launch.',
-    duration: '3 mo',
-    submitted: '2026-06-29',
-    lockExpires: '-',
-  },
-];
-
 @Component({
   selector: 'app-pending-approvals-page',
   imports: [MatIconModule, UserMenu],
@@ -64,18 +27,19 @@ const APPROVALS: readonly PendingApproval[] = [
 })
 export class PendingApprovalsPage {
   private readonly auth = inject(AuthService);
+  private readonly requestsApi = inject(RequestsService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.profile;
   protected readonly canReview = computed(() => this.user().role === 'AdminIT' || this.user().role === 'Manager');
   protected readonly globalSearch = signal('');
-  protected readonly decisions = signal<Readonly<Record<string, ApprovalDecision>>>({});
+  private readonly approvals = signal<readonly PendingApproval[]>([]);
   protected readonly decisionMessage = signal('');
+  protected readonly errorMessage = signal('');
+  protected readonly isLoading = signal(true);
 
-  protected readonly pendingApprovals = computed(() =>
-    APPROVALS.filter(approval => !this.decisions()[approval.assetCode])
-  );
-  protected readonly awaitingCount = computed(() => this.pendingApprovals().length);
+  protected readonly pendingApprovals = computed(() => this.approvals());
+  protected readonly awaitingCount = computed(() => this.approvals().length);
   protected readonly filteredApprovals = computed(() =>
     this.pendingApprovals().filter(approval =>
       matchesSearch(this.globalSearch(), [
@@ -90,15 +54,76 @@ export class PendingApprovalsPage {
     )
   );
 
+  constructor() {
+    if (this.canReview()) {
+      this.load();
+    } else {
+      this.isLoading.set(false);
+    }
+  }
+
   protected updateGlobalSearch(event: Event): void {
     this.globalSearch.set(controlValue(event));
   }
 
-  protected decide(approval: PendingApproval, decision: ApprovalDecision): void {
-    this.decisions.update(decisions => ({
-      ...decisions,
-      [approval.assetCode]: decision,
-    }));
-    this.decisionMessage.set(`${decision === 'approved' ? 'Approved' : 'Rejected'} ${approval.assetCode}`);
+  protected approve(approval: PendingApproval): void {
+    this.requestsApi.approve(approval.id).subscribe({
+      next: () => this.finishDecision(approval, 'Approved'),
+      error: () => this.errorMessage.set(`Unable to approve ${approval.assetCode}.`),
+    });
   }
+
+  protected reject(approval: PendingApproval): void {
+    this.requestsApi.reject(approval.id, { reason: null }).subscribe({
+      next: () => this.finishDecision(approval, 'Rejected'),
+      error: () => this.errorMessage.set(`Unable to reject ${approval.assetCode}.`),
+    });
+  }
+
+  private load(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+    this.requestsApi.pending({ page: 1, pageSize: 100 }).subscribe({
+      next: result => {
+        if (result.items.length === 0) {
+          this.approvals.set([]);
+          this.isLoading.set(false);
+          return;
+        }
+        forkJoin(
+          result.items.map(item =>
+            this.requestsApi.get(item.id).pipe(catchError(() => of<AllocationRequestDto | null>(null)))
+          )
+        ).subscribe(details => {
+          this.approvals.set(result.items.map((item, index) => toPendingApproval(item, details[index])));
+          this.isLoading.set(false);
+        });
+      },
+      error: () => {
+        this.errorMessage.set('Unable to load pending approvals.');
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  private finishDecision(approval: PendingApproval, action: 'Approved' | 'Rejected'): void {
+    this.approvals.update(items => items.filter(item => item.id !== approval.id));
+    this.decisionMessage.set(`${action} ${approval.assetCode}`);
+  }
+}
+
+function toPendingApproval(
+  item: RequestListItem,
+  detail: AllocationRequestDto | null
+): PendingApproval {
+  return {
+    id: item.id,
+    requester: item.requesterName ?? '-',
+    assetCode: item.assetCode ?? '-',
+    model: item.modelName ?? '-',
+    reason: detail?.reason ?? '-',
+    duration: item.expectedDurationMonths ? `${item.expectedDurationMonths} mo` : '-',
+    submitted: item.createdAt.slice(0, 10),
+    lockExpires: item.lockExpiresAt?.slice(0, 10) ?? '-',
+  };
 }

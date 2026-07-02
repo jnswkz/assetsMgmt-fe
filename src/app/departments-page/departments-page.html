@@ -40,6 +40,10 @@
         }
       </section>
 
+      @if (errorMessage()) {
+        <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+      }
+
       <section class="departments-card" aria-label="Departments table">
         <div class="table-wrap">
           <table>
@@ -87,7 +91,9 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td class="empty-row" [attr.colspan]="canManage() ? 6 : 5">No departments match your search.</td>
+                  <td class="empty-row" [attr.colspan]="canManage() ? 6 : 5">
+                    {{ isLoading() ? 'Loading departments…' : 'No departments match your search.' }}
+                  </td>
                 </tr>
               }
             </tbody>
@@ -119,7 +125,7 @@
       <header class="dialog-header">
         <div>
           <h2 id="new-department-title">New department</h2>
-          <p>Add a department before backend API integration.</p>
+          <p>Create a department and optionally assign a manager by full name.</p>
         </div>
         <button class="dialog-close" type="button" aria-label="Close new department dialog" (click)="closeAddDialog()">
           <mat-icon aria-hidden="true">close</mat-icon>
@@ -138,10 +144,6 @@
         <label>
           Manager
           <input type="text" autocomplete="off" [value]="managerInput()" (input)="updateManager($event)" />
-        </label>
-        <label>
-          Users
-          <input type="number" min="0" step="1" [value]="usersInput()" (input)="updateUsers($event)" />
         </label>
 
         @if (formError()) {

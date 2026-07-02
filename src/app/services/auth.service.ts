@@ -1,8 +1,21 @@
-import { PLATFORM_ID, Service, computed, inject, signal } from '@angular/core';
+import { Injector, PLATFORM_ID, Service, computed, inject, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  distinctUntilChanged,
+  filter,
+  finalize,
+  map,
+  of,
+  shareReplay,
+  switchMap,
+  take,
+  tap,
+} from 'rxjs';
 import { ApiService } from './api.service';
 import { TokenStore } from './token-store';
 import { LoginRequest, MeResponse, TokenResponse } from '../models/auth.model';
@@ -19,6 +32,8 @@ export interface UserProfile {
   readonly role: Role;
 }
 
+export type SessionState = 'checking' | 'authenticated' | 'anonymous';
+
 const GUEST_PROFILE: UserProfile = {
   userName: '',
   fullName: '',
@@ -29,42 +44,72 @@ const GUEST_PROFILE: UserProfile = {
   role: 'Employee',
 };
 
+const TEST_USERS: Readonly<Record<string, MeResponse>> = {
+  alice: {
+    id: 'user-alice',
+    userName: 'alice',
+    email: 'alice@acme.co',
+    fullName: 'Alice Morgan',
+    employeeCode: 'IT-1001',
+    role: 'AdminIT',
+    departmentId: 'dept-it',
+    departmentName: 'IT Asset Management',
+  },
+  ben: {
+    id: 'user-ben',
+    userName: 'ben',
+    email: 'ben@acme.co',
+    fullName: 'Ben Carter',
+    employeeCode: 'M-1002',
+    role: 'Manager',
+    departmentId: 'dept-ops',
+    departmentName: 'Operations',
+  },
+  chloe: {
+    id: 'user-chloe',
+    userName: 'chloe',
+    email: 'chloe@acme.co',
+    fullName: 'Chloe Davis',
+    employeeCode: 'E-1003',
+    role: 'Employee',
+    departmentId: 'dept-eng',
+    departmentName: 'Engineering',
+  },
+};
+
 @Service()
 export class AuthService {
-  private readonly api = inject(ApiService);
+  private readonly injector = inject(Injector);
   private readonly tokens = inject(TokenStore);
-  private readonly router = inject(Router);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   private readonly currentUserState = signal<MeResponse | null>(null);
+  private readonly sessionStateInternal = signal<SessionState>(
+    this.tokens.hasSession() ? 'checking' : 'anonymous'
+  );
   /** A single shared refresh so concurrent 401s don't start a refresh storm. */
   private refreshInFlight: Observable<string | null> | null = null;
 
   readonly currentUser = this.currentUserState.asReadonly();
   readonly profile = computed<UserProfile>(() => deriveProfile(this.currentUserState()));
-  readonly role = computed<Role>(() => this.currentUserState()?.role ?? 'Employee');
-  readonly isAuthenticated = computed(() => this.tokens.hasSession());
+  readonly role = computed<Role | null>(() => this.currentUserState()?.role ?? null);
+  readonly isAuthenticated = computed(() => this.sessionStateInternal() === 'authenticated');
+  readonly hasStoredSession = this.tokens.hasSession;
+  readonly sessionState = this.sessionStateInternal.asReadonly();
+  readonly isRestoringSession = computed(() => this.sessionStateInternal() === 'checking');
+  readonly isSessionResolved = computed(() => this.sessionStateInternal() !== 'checking');
+  private readonly sessionState$ = toObservable(this.sessionState).pipe(distinctUntilChanged());
 
   constructor() {
-    // Restore the session on reload: a token in storage but no loaded profile yet.
-    // If /me returns 401 the interceptor transparently refreshes and retries; the
-    // session is only cleared when that refresh also fails (see loadCurrentUser).
     if (this.isBrowser && this.tokens.hasSession() && this.currentUserState() === null) {
-      this.loadCurrentUser().subscribe({
-        error: (error: unknown) => {
-          // Only drop the session on a definitive auth failure. Transient network
-          // errors during bootstrap must not log the user out.
-          if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403)) {
-            this.clearSession();
-          }
-        },
-      });
+      this.restoreSession();
     }
   }
 
   login(userName: string, password: string): Observable<boolean> {
     const body: LoginRequest = { userName: userName.trim(), password };
-    return this.api.post<TokenResponse>('/api/auth/login', body).pipe(
+    this.sessionStateInternal.set('checking');
+    return this.injector.get(ApiService).post<TokenResponse>('/api/auth/login', body).pipe(
       tap(tokens => this.tokens.set(tokens)),
       switchMap(() => this.loadCurrentUser()),
       map(() => true),
@@ -77,7 +122,14 @@ export class AuthService {
 
   logout(): void {
     this.clearSession();
-    void this.router.navigateByUrl('/login');
+    void this.injector.get(Router).navigateByUrl('/login');
+  }
+
+  /** Test helper for component specs. Runtime auth still comes from `/api/auth/me`. */
+  selectMockUser(userName: string): void {
+    const profile = TEST_USERS[userName] ?? TEST_USERS['chloe'];
+    this.currentUserState.set(profile);
+    this.sessionStateInternal.set('authenticated');
   }
 
   /**
@@ -92,25 +144,55 @@ export class AuthService {
     if (!refreshToken) {
       return of(null);
     }
-    this.refreshInFlight = this.api.post<TokenResponse>('/api/auth/refresh', { refreshToken }).pipe(
-      tap(tokens => this.tokens.set(tokens)),
-      map(tokens => tokens.accessToken),
-      catchError(() => of(null)),
-      finalize(() => (this.refreshInFlight = null)),
-      shareReplay(1)
-    );
+    this.refreshInFlight = this.injector
+      .get(ApiService)
+      .post<TokenResponse>('/api/auth/refresh', { refreshToken })
+      .pipe(
+        tap(tokens => this.tokens.set(tokens)),
+        map(tokens => tokens.accessToken),
+        catchError(() => of(null)),
+        finalize(() => (this.refreshInFlight = null)),
+        shareReplay(1)
+      );
     return this.refreshInFlight;
   }
 
   loadCurrentUser(): Observable<MeResponse> {
-    return this.api
+    return this.injector
+      .get(ApiService)
       .get<MeResponse>('/api/auth/me')
-      .pipe(tap(me => this.currentUserState.set(me)));
+      .pipe(
+        tap(me => {
+          this.currentUserState.set(me);
+          this.sessionStateInternal.set('authenticated');
+        })
+      );
+  }
+
+  waitForResolvedSession(): Observable<SessionState> {
+    return this.sessionState$.pipe(
+      filter(state => state !== 'checking'),
+      take(1)
+    );
+  }
+
+  private restoreSession(): void {
+    this.sessionStateInternal.set('checking');
+    this.loadCurrentUser().subscribe({
+      error: (error: unknown) => {
+        if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403)) {
+          this.clearSession();
+          return;
+        }
+        this.sessionStateInternal.set('anonymous');
+      },
+    });
   }
 
   private clearSession(): void {
     this.tokens.clear();
     this.currentUserState.set(null);
+    this.sessionStateInternal.set('anonymous');
   }
 }
 

@@ -33,12 +33,16 @@
         </div>
       </section>
 
+      @if (errorMessage()) {
+        <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+      }
+
       <section class="history-toolbar" aria-label="Allocation history filters">
         <app-filter-select
           class="history-select"
           label="Filter by asset"
           placeholder="All assets"
-          [options]="assetOptions"
+          [options]="assetOptions()"
           [value]="assetFilter()"
           (valueChange)="assetFilter.set($event)"
         ></app-filter-select>
@@ -47,7 +51,7 @@
           class="history-select"
           label="Filter by user"
           placeholder="All users"
-          [options]="userOptions"
+          [options]="userOptions()"
           [value]="userFilter()"
           (valueChange)="userFilter.set($event)"
         ></app-filter-select>
@@ -89,7 +93,9 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td class="empty-row" colspan="7">No allocation history matches your filters.</td>
+                  <td class="empty-row" colspan="7">
+                    {{ isLoading() ? 'Loading allocation history…' : 'No allocation history matches your filters.' }}
+                  </td>
                 </tr>
               }
             </tbody>

@@ -1,6 +1,7 @@
 import { PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CanActivateFn, Router } from '@angular/router';
+import { map } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
 export const authGuard: CanActivateFn = () => {
@@ -16,9 +17,30 @@ export const authGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  if (auth.isAuthenticated()) {
+  if (auth.isSessionResolved()) {
+    return auth.isAuthenticated() ? true : router.parseUrl('/login');
+  }
+
+  return auth.waitForResolvedSession().pipe(
+    map(() => (auth.isAuthenticated() ? true : router.parseUrl('/login')))
+  );
+};
+
+export const guestGuard: CanActivateFn = () => {
+  const platformId = inject(PLATFORM_ID);
+
+  if (!isPlatformBrowser(platformId)) {
     return true;
   }
 
-  return router.parseUrl('/login');
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  if (auth.isSessionResolved()) {
+    return auth.isAuthenticated() ? router.parseUrl('/dashboard') : true;
+  }
+
+  return auth.waitForResolvedSession().pipe(
+    map(() => (auth.isAuthenticated() ? router.parseUrl('/dashboard') : true))
+  );
 };

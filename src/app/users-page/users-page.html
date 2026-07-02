@@ -38,6 +38,10 @@
         </button>
       </section>
 
+      @if (errorMessage()) {
+        <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+      }
+
       <section class="toolbar users-toolbar" aria-label="User filters">
         <label class="asset-search" for="users-search">
           <mat-icon aria-hidden="true">search</mat-icon>
@@ -142,7 +146,9 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td class="empty-row" colspan="8">No users match your filters.</td>
+                  <td class="empty-row" colspan="8">
+                    {{ isLoading() ? 'Loading users…' : 'No users match your filters.' }}
+                  </td>
                 </tr>
               }
             </tbody>
@@ -174,7 +180,7 @@
       <header class="dialog-header">
         <div>
           <h2 id="new-user-title">New user</h2>
-          <p>Add a user before backend API integration.</p>
+          <p>Create a user account with a department assignment.</p>
         </div>
         <button class="dialog-close" type="button" aria-label="Close new user dialog" (click)="closeAddDialog()">
           <mat-icon aria-hidden="true">close</mat-icon>
@@ -195,6 +201,10 @@
           <input type="email" autocomplete="email" [value]="emailInput()" (input)="updateEmail($event)" />
         </label>
         <label>
+          Password
+          <input type="password" autocomplete="new-password" [value]="passwordInput()" (input)="updatePassword($event)" />
+        </label>
+        <label>
           Employee code
           <input type="text" autocomplete="off" [value]="employeeCodeInput()" (input)="updateEmployeeCode($event)" />
         </label>
@@ -208,7 +218,12 @@
         </label>
         <label>
           Department
-          <input type="text" autocomplete="organization-title" [value]="departmentInput()" (input)="updateDepartmentInput($event)" />
+          <select [value]="departmentInput()" (change)="updateDepartmentInput($event)">
+            <option value="">Select a department</option>
+            @for (department of departmentChoices(); track department.id) {
+              <option [value]="department.id">{{ department.name }}</option>
+            }
+          </select>
         </label>
 
         @if (formError()) {

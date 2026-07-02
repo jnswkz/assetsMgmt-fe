@@ -1,12 +1,23 @@
 import { UserMenu } from '../user-menu/user-menu';
 import { Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
+import { Subject, debounceTime } from 'rxjs';
 import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
-import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
+import { AssetsService } from '../services/assets.service';
+import { controlValue, matchesSearch } from '../utils/search';
+import { AssetModelListItem, CreateAssetModelRequest, PagedResult } from '../models/api.model';
+import {
+  ASSET_CATEGORY,
+  DEPRECIATION_METHOD,
+  assetCategoryLabel,
+  assetCategoryValue,
+} from '../models/enums';
 
-interface AssetModel {
+interface ModelRow {
+  readonly id: string;
   readonly name: string;
   readonly category: string;
   readonly manufacturer: string;
@@ -15,72 +26,25 @@ interface AssetModel {
   readonly instances: number;
 }
 
-const ASSET_MODELS: readonly AssetModel[] = [
-  {
-    name: 'MacBook Pro 14"',
-    category: 'Laptop',
-    manufacturer: 'Apple',
-    modelNumber: 'MBP14-M3',
-    usefulLife: '48 mo',
-    instances: 6,
-  },
-  {
-    name: 'ThinkPad X1 Carbon',
-    category: 'Laptop',
-    manufacturer: 'Lenovo',
-    modelNumber: 'X1C-G11',
-    usefulLife: '36 mo',
-    instances: 4,
-  },
-  {
-    name: 'Dell UltraSharp 27',
-    category: 'Monitor',
-    manufacturer: 'Dell',
-    modelNumber: 'U2723QE',
-    usefulLife: '60 mo',
-    instances: 5,
-  },
-  {
-    name: 'iPhone 15 Pro',
-    category: 'Phone',
-    manufacturer: 'Apple',
-    modelNumber: 'A2848',
-    usefulLife: '36 mo',
-    instances: 3,
-  },
-  {
-    name: 'iPad Air',
-    category: 'Tablet',
-    manufacturer: 'Apple',
-    modelNumber: 'iPad-Air-M2',
-    usefulLife: '36 mo',
-    instances: 2,
-  },
-  {
-    name: 'Logitech MX Master 3S',
-    category: 'Peripheral',
-    manufacturer: 'Logitech',
-    modelNumber: 'MX3S',
-    usefulLife: '24 mo',
-    instances: 8,
-  },
-  {
-    name: 'HP LaserJet Pro',
-    category: 'Printer',
-    manufacturer: 'HP',
-    modelNumber: 'M404dn',
-    usefulLife: '60 mo',
-    instances: 2,
-  },
-  {
-    name: 'Cisco Catalyst 9200',
-    category: 'NetworkDevice',
-    manufacturer: 'Cisco',
-    modelNumber: 'C9200-24P',
-    usefulLife: '84 mo',
-    instances: 2,
-  },
-];
+interface ModelForm {
+  name: string;
+  category: number;
+  manufacturer: string;
+  modelNumber: string;
+  specs: string;
+  defaultUsefulLifeMonths: string;
+  defaultDepreciationMethod: number;
+}
+
+const EMPTY_FORM: ModelForm = {
+  name: '',
+  category: 0,
+  manufacturer: '',
+  modelNumber: '',
+  specs: '',
+  defaultUsefulLifeMonths: '',
+  defaultDepreciationMethod: 0,
+};
 
 @Component({
   selector: 'app-asset-catalog-page',
@@ -90,23 +54,42 @@ const ASSET_MODELS: readonly AssetModel[] = [
 })
 export class AssetCatalogPage {
   private readonly auth = inject(AuthService);
+  private readonly assetsApi = inject(AssetsService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.profile;
-  protected readonly models = ASSET_MODELS;
+  protected readonly canManageCatalog = computed(() => this.auth.role() === 'AdminIT');
+
+  private readonly pageSize = 20;
+  protected readonly page = signal(1);
+  private readonly result = signal<PagedResult<AssetModelListItem> | null>(null);
+  protected readonly isLoading = signal(true);
+  protected readonly errorMessage = signal('');
+  protected readonly statusMessage = signal('');
+
   protected readonly globalSearch = signal('');
   protected readonly modelSearch = signal('');
   protected readonly categoryFilter = signal('');
-  protected readonly categories = uniqueStrings(ASSET_MODELS.map(model => model.category));
-  protected readonly canManageCatalog = computed(() => this.auth.role() !== 'Employee');
-  protected readonly primaryActionLabel = computed(() =>
-    this.canManageCatalog() ? 'New model' : 'Request model'
-  );
-  protected readonly filteredModels = computed(() => {
-    const category = this.categoryFilter();
+  private readonly searchInput = new Subject<string>();
 
-    return this.models.filter(model =>
-      (!category || model.category === category) &&
+  protected readonly categories = ASSET_CATEGORY;
+  protected readonly depreciationMethods = DEPRECIATION_METHOD;
+
+  // Create/edit dialog state (AdminIT only)
+  protected readonly isDialogOpen = signal(false);
+  protected readonly editingId = signal<string | null>(null);
+  protected readonly form = signal<ModelForm>({ ...EMPTY_FORM });
+  protected readonly formError = signal('');
+  protected readonly isSaving = signal(false);
+
+  // Delete confirmation state
+  protected readonly deletingId = signal<string | null>(null);
+
+  protected readonly rows = computed<readonly ModelRow[]>(() =>
+    (this.result()?.items ?? []).map(toRow)
+  );
+  protected readonly filteredModels = computed(() =>
+    this.rows().filter(model =>
       matchesSearch(this.globalSearch(), [
         model.name,
         model.category,
@@ -114,25 +97,218 @@ export class AssetCatalogPage {
         model.modelNumber,
         model.usefulLife,
         model.instances,
-      ]) &&
-      matchesSearch(this.modelSearch(), [
-        model.name,
-        model.category,
-        model.manufacturer,
-        model.modelNumber,
       ])
-    );
-  });
+    )
+  );
+  protected readonly total = computed(() => this.result()?.total ?? 0);
+  protected readonly totalPages = computed(() => this.result()?.totalPages ?? 0);
+
+  protected readonly dialogTitle = computed(() =>
+    this.editingId() ? 'Edit asset model' : 'New asset model'
+  );
+
+  constructor() {
+    this.searchInput.pipe(debounceTime(300), takeUntilDestroyed()).subscribe(value => {
+      this.modelSearch.set(value);
+      this.page.set(1);
+      this.load();
+    });
+    this.load();
+  }
+
+  private load(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+
+    const categoryLabel = this.categoryFilter();
+    this.assetsApi
+      .modelsPaged({
+        category: categoryLabel ? assetCategoryValue(categoryLabel) : undefined,
+        search: this.modelSearch() || undefined,
+        page: this.page(),
+        pageSize: this.pageSize,
+      })
+      .subscribe({
+        next: result => {
+          this.result.set(result);
+          this.isLoading.set(false);
+        },
+        error: () => {
+          this.errorMessage.set('Unable to load asset models.');
+          this.isLoading.set(false);
+        },
+      });
+  }
 
   protected updateGlobalSearch(event: Event): void {
     this.globalSearch.set(controlValue(event));
   }
 
   protected updateModelSearch(event: Event): void {
-    this.modelSearch.set(controlValue(event));
+    this.searchInput.next(controlValue(event));
   }
 
-  protected updateCategoryFilter(event: Event): void {
-    this.categoryFilter.set(controlValue(event));
+  protected setCategoryFilter(value: string): void {
+    this.categoryFilter.set(value);
+    this.page.set(1);
+    this.load();
   }
+
+  protected prevPage(): void {
+    if (this.page() > 1) {
+      this.page.update(p => p - 1);
+      this.load();
+    }
+  }
+
+  protected nextPage(): void {
+    if (this.page() < this.totalPages()) {
+      this.page.update(p => p + 1);
+      this.load();
+    }
+  }
+
+  // --- Create / edit (AdminIT) ---
+
+  protected openCreate(): void {
+    if (!this.canManageCatalog()) {
+      return;
+    }
+    this.editingId.set(null);
+    this.form.set({ ...EMPTY_FORM });
+    this.formError.set('');
+    this.isDialogOpen.set(true);
+  }
+
+  protected openEdit(row: ModelRow): void {
+    if (!this.canManageCatalog()) {
+      return;
+    }
+    this.formError.set('');
+    this.editingId.set(row.id);
+    this.assetsApi.model(row.id).subscribe({
+      next: model => {
+        this.form.set({
+          name: model.name ?? '',
+          category: model.category,
+          manufacturer: model.manufacturer ?? '',
+          modelNumber: model.modelNumber ?? '',
+          specs: model.specs ?? '',
+          defaultUsefulLifeMonths: model.defaultUsefulLifeMonths
+            ? String(model.defaultUsefulLifeMonths)
+            : '',
+          defaultDepreciationMethod: model.defaultDepreciationMethod,
+        });
+        this.isDialogOpen.set(true);
+      },
+      error: () => this.errorMessage.set('Unable to load the model for editing.'),
+    });
+  }
+
+  protected closeDialog(): void {
+    this.isDialogOpen.set(false);
+    this.editingId.set(null);
+  }
+
+  protected updateFormField(field: keyof ModelForm, event: Event): void {
+    const value = controlValue(event);
+    this.form.update(current => ({ ...current, [field]: value }));
+  }
+
+  protected updateFormNumber(field: 'category' | 'defaultDepreciationMethod', event: Event): void {
+    const value = Number(controlValue(event));
+    this.form.update(current => ({ ...current, [field]: Number.isNaN(value) ? 0 : value }));
+  }
+
+  protected saveModel(): void {
+    const form = this.form();
+    const name = form.name.trim();
+    if (!name) {
+      this.formError.set('Model name is required.');
+      return;
+    }
+
+    const body: CreateAssetModelRequest = {
+      name,
+      category: form.category,
+      manufacturer: form.manufacturer.trim() || null,
+      modelNumber: form.modelNumber.trim() || null,
+      specs: form.specs.trim() || null,
+      defaultUsefulLifeMonths: numberOrNull(form.defaultUsefulLifeMonths),
+      defaultDepreciationMethod: form.defaultDepreciationMethod,
+      imageUrl: null,
+    };
+
+    this.isSaving.set(true);
+    this.formError.set('');
+    const editingId = this.editingId();
+    const request$ = editingId
+      ? this.assetsApi.updateModel(editingId, body)
+      : this.assetsApi.createModel(body);
+
+    request$.subscribe({
+      next: () => {
+        this.isSaving.set(false);
+        this.statusMessage.set(editingId ? 'Model updated' : 'Model created');
+        this.closeDialog();
+        this.load();
+      },
+      error: () => {
+        this.isSaving.set(false);
+        this.formError.set('Save failed. Check the fields and try again.');
+      },
+    });
+  }
+
+  // --- Delete (AdminIT) ---
+
+  protected askDelete(row: ModelRow): void {
+    if (!this.canManageCatalog()) {
+      return;
+    }
+    this.deletingId.set(row.id);
+  }
+
+  protected cancelDelete(): void {
+    this.deletingId.set(null);
+  }
+
+  protected confirmDelete(): void {
+    const id = this.deletingId();
+    if (!id) {
+      return;
+    }
+    this.assetsApi.deleteModel(id).subscribe({
+      next: () => {
+        this.statusMessage.set('Model deleted');
+        this.deletingId.set(null);
+        this.load();
+      },
+      error: () => {
+        this.errorMessage.set('Delete failed. The model may have existing instances.');
+        this.deletingId.set(null);
+      },
+    });
+  }
+}
+
+function toRow(item: AssetModelListItem): ModelRow {
+  return {
+    id: item.id,
+    name: item.name ?? '-',
+    category: assetCategoryLabel(item.category),
+    manufacturer: item.manufacturer ?? '-',
+    modelNumber: item.modelNumber ?? '-',
+    usefulLife: item.defaultUsefulLifeMonths ? `${item.defaultUsefulLifeMonths} mo` : '-',
+    instances: item.instanceCount,
+  };
+}
+
+function numberOrNull(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  return Number.isNaN(parsed) ? null : parsed;
 }

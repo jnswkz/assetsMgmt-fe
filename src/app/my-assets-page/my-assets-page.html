@@ -32,6 +32,10 @@
       </div>
     </section>
 
+    @if (errorMessage()) {
+      <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+    }
+
     <section class="assigned-grid" aria-label="Assigned assets">
       @for (asset of filteredAssignedAssets(); track asset.code) {
         <article class="asset-card">
@@ -60,7 +64,7 @@
         </article>
       } @empty {
         <article class="asset-card">
-          <p>No assigned assets match your search.</p>
+          <p>{{ isLoading() ? 'Loading your assets…' : 'No assigned assets match your search.' }}</p>
         </article>
       }
     </section>

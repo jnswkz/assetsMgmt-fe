@@ -6,112 +6,25 @@ import { FilterSelect } from '../filter-select/filter-select';
 import { Role } from '../models/nav-item';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
+import { DepartmentsService } from '../services/departments.service';
+import { UsersService } from '../services/users.service';
 import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
+import { DepartmentListItem, UserDto, UserListItem } from '../models/api.model';
+import { userRoleLabel, userRoleValue } from '../models/enums';
 
 type UserStatus = 'Active' | 'Inactive';
 
 interface ManagedUser {
+  readonly id: string;
   readonly username: string;
   readonly fullName: string;
   readonly email: string;
   readonly employeeCode: string;
   readonly role: Role;
+  readonly departmentId: string | null;
   readonly department: string;
   readonly status: UserStatus;
 }
-
-const USERS: readonly ManagedUser[] = [
-  {
-    username: 'alice',
-    fullName: 'Alice Morgan',
-    email: 'alice@acme.co',
-    employeeCode: 'E-1001',
-    role: 'AdminIT',
-    department: 'IT',
-    status: 'Active',
-  },
-  {
-    username: 'ben',
-    fullName: 'Ben Carter',
-    email: 'ben@acme.co',
-    employeeCode: 'E-1002',
-    role: 'Manager',
-    department: 'Engineering',
-    status: 'Active',
-  },
-  {
-    username: 'chloe',
-    fullName: 'Chloe Davis',
-    email: 'chloe@acme.co',
-    employeeCode: 'E-1003',
-    role: 'Employee',
-    department: 'Engineering',
-    status: 'Active',
-  },
-  {
-    username: 'diego',
-    fullName: 'Diego Ramirez',
-    email: 'diego@acme.co',
-    employeeCode: 'E-1004',
-    role: 'Employee',
-    department: 'Design',
-    status: 'Active',
-  },
-  {
-    username: 'ella',
-    fullName: 'Ella Nguyen',
-    email: 'ella@acme.co',
-    employeeCode: 'E-1005',
-    role: 'Manager',
-    department: 'Operations',
-    status: 'Active',
-  },
-  {
-    username: 'felix',
-    fullName: 'Felix Wong',
-    email: 'felix@acme.co',
-    employeeCode: 'E-1006',
-    role: 'Employee',
-    department: 'Sales',
-    status: 'Active',
-  },
-  {
-    username: 'gina',
-    fullName: 'Gina Patel',
-    email: 'gina@acme.co',
-    employeeCode: 'E-1007',
-    role: 'Employee',
-    department: 'Marketing',
-    status: 'Active',
-  },
-  {
-    username: 'hugo',
-    fullName: 'Hugo Schmidt',
-    email: 'hugo@acme.co',
-    employeeCode: 'E-1008',
-    role: 'Employee',
-    department: 'Finance',
-    status: 'Inactive',
-  },
-  {
-    username: 'ivy',
-    fullName: 'Ivy Tanaka',
-    email: 'ivy@acme.co',
-    employeeCode: 'E-1009',
-    role: 'Employee',
-    department: 'Engineering',
-    status: 'Active',
-  },
-  {
-    username: 'jonas',
-    fullName: 'Jonas Berg',
-    email: 'jonas@acme.co',
-    employeeCode: 'E-1010',
-    role: 'Manager',
-    department: 'IT',
-    status: 'Active',
-  },
-];
 
 const ROLES: readonly Role[] = ['AdminIT', 'Manager', 'Employee'];
 const STATUSES: readonly UserStatus[] = ['Active', 'Inactive'];
@@ -124,11 +37,14 @@ const STATUSES: readonly UserStatus[] = ['Active', 'Inactive'];
 })
 export class UsersPage {
   private readonly auth = inject(AuthService);
+  private readonly usersApi = inject(UsersService);
+  private readonly departmentsApi = inject(DepartmentsService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.profile;
   protected readonly canManage = computed(() => this.user().role === 'AdminIT');
-  protected readonly users = signal<readonly ManagedUser[]>(USERS);
+  protected readonly users = signal<readonly ManagedUser[]>([]);
+  protected readonly departments = signal<readonly DepartmentListItem[]>([]);
   protected readonly globalSearch = signal('');
   protected readonly userSearch = signal('');
   protected readonly roleFilter = signal<Role | ''>('');
@@ -140,13 +56,19 @@ export class UsersPage {
   protected readonly fullNameInput = signal('');
   protected readonly emailInput = signal('');
   protected readonly employeeCodeInput = signal('');
+  protected readonly passwordInput = signal('');
   protected readonly roleInput = signal<Role>('Employee');
-  protected readonly departmentInput = signal('Engineering');
+  protected readonly departmentInput = signal('');
   protected readonly formError = signal('');
   protected readonly statusMessage = signal('');
+  protected readonly isLoading = signal(true);
+  protected readonly errorMessage = signal('');
 
   protected readonly roleOptions = ROLES;
-  protected readonly departmentOptions = computed(() => uniqueStrings(this.users().map(profile => profile.department)));
+  protected readonly departmentOptions = computed(() =>
+    uniqueStrings(this.users().map(profile => profile.department))
+  );
+  protected readonly departmentChoices = computed(() => this.departments());
   protected readonly filteredUsers = computed(() => {
     const globalSearch = this.globalSearch();
     const userSearch = this.userSearch();
@@ -174,6 +96,15 @@ export class UsersPage {
       );
     });
   });
+
+  constructor() {
+    if (this.canManage()) {
+      this.loadDepartments();
+      this.loadUsers();
+    } else {
+      this.isLoading.set(false);
+    }
+  }
 
   protected updateGlobalSearch(event: Event): void {
     this.globalSearch.set(controlValue(event));
@@ -213,12 +144,24 @@ export class UsersPage {
 
   protected toggleUserStatus(profile: ManagedUser): void {
     const status: UserStatus = profile.status === 'Active' ? 'Inactive' : 'Active';
-
-    this.users.update(users =>
-      users.map(current => (current.username === profile.username ? { ...current, status } : current))
-    );
-    this.statusMessage.set(`${profile.fullName} ${status.toLowerCase()}`);
-    this.closeActionMenu();
+    this.usersApi
+      .update(profile.id, {
+        email: profile.email,
+        fullName: profile.fullName,
+        role: userRoleValue(profile.role),
+        departmentId: profile.departmentId,
+        isActive: status === 'Active',
+      })
+      .subscribe({
+        next: updated => {
+          this.users.update(users =>
+            users.map(current => (current.id === profile.id ? toManagedUser(updated) : current))
+          );
+          this.statusMessage.set(`${profile.fullName} ${status.toLowerCase()}`);
+          this.closeActionMenu();
+        },
+        error: () => this.errorMessage.set(`Unable to update ${profile.fullName}.`),
+      });
   }
 
   protected openAddDialog(): void {
@@ -227,8 +170,9 @@ export class UsersPage {
     this.fullNameInput.set('');
     this.emailInput.set('');
     this.employeeCodeInput.set('');
+    this.passwordInput.set('');
     this.roleInput.set('Employee');
-    this.departmentInput.set('Engineering');
+    this.departmentInput.set(this.departments()[0]?.id ?? '');
     this.isAddDialogOpen.set(true);
     this.closeActionMenu();
   }
@@ -253,6 +197,10 @@ export class UsersPage {
     this.employeeCodeInput.set(controlValue(event).trim().toUpperCase());
   }
 
+  protected updatePassword(event: Event): void {
+    this.passwordInput.set(controlValue(event));
+  }
+
   protected updateRoleInput(event: Event): void {
     const role = this.toRole(controlValue(event));
     this.roleInput.set(role || 'Employee');
@@ -267,11 +215,13 @@ export class UsersPage {
     const fullName = this.fullNameInput().trim();
     const email = this.emailInput().trim().toLowerCase();
     const employeeCode = this.employeeCodeInput().trim().toUpperCase();
+    const password = this.passwordInput();
     const role = this.roleInput();
-    const department = this.departmentInput().trim();
+    const departmentId = this.departmentInput() || null;
+    const department = this.departments().find(item => item.id === departmentId)?.name ?? '';
 
-    if (!username || !fullName || !email || !employeeCode || !department) {
-      this.formError.set('Enter a username, full name, email, employee code, and department.');
+    if (!username || !fullName || !email || !employeeCode || !password || !departmentId) {
+      this.formError.set('Enter a username, full name, email, password, employee code, and department.');
       return;
     }
 
@@ -280,30 +230,52 @@ export class UsersPage {
       return;
     }
 
-    if (this.users().some(profile => profile.username === username)) {
-      this.formError.set('Username already exists.');
+    if (password.length < 8) {
+      this.formError.set('Password must be at least 8 characters.');
       return;
     }
 
-    if (this.users().some(profile => profile.employeeCode === employeeCode)) {
-      this.formError.set('Employee code already exists.');
-      return;
-    }
-
-    this.users.update(users => [
-      ...users,
-      {
-        username,
-        fullName,
+    this.usersApi
+      .create({
+        userName: username,
         email,
+        password,
+        fullName,
         employeeCode,
-        role,
-        department,
-        status: 'Active',
+        role: userRoleValue(role),
+        departmentId,
+      })
+      .subscribe({
+        next: created => {
+          this.users.update(users => [...users, toManagedUser(created)]);
+          this.statusMessage.set(`${fullName} added`);
+          this.closeAddDialog();
+        },
+        error: () => {
+          this.formError.set('Unable to create the user.');
+        },
+      });
+  }
+
+  private loadUsers(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+    this.usersApi.list({ page: 1, pageSize: 200 }).subscribe({
+      next: result => {
+        this.users.set(result.items.map(toManagedUser));
+        this.isLoading.set(false);
       },
-    ]);
-    this.statusMessage.set(`${fullName} added`);
-    this.closeAddDialog();
+      error: () => {
+        this.errorMessage.set('Unable to load users.');
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  private loadDepartments(): void {
+    this.departmentsApi
+      .list({ page: 1, pageSize: 200 })
+      .subscribe(result => this.departments.set(result.items));
   }
 
   private toRole(value: string): Role | '' {
@@ -313,4 +285,18 @@ export class UsersPage {
   private toStatus(value: string): UserStatus | '' {
     return STATUSES.find(status => status === value) ?? '';
   }
+}
+
+function toManagedUser(item: UserListItem | UserDto): ManagedUser {
+  return {
+    id: item.id,
+    username: item.userName ?? '-',
+    fullName: item.fullName ?? '-',
+    email: item.email ?? '-',
+    employeeCode: item.employeeCode ?? '-',
+    role: userRoleLabel(item.role),
+    departmentId: item.departmentId,
+    department: item.departmentName ?? '-',
+    status: item.isActive ? 'Active' : 'Inactive',
+  };
 }

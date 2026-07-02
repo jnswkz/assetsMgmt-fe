@@ -37,21 +37,25 @@ export class TokenStore {
   }
 
   private read(key: string): string | null {
-    if (!this.isBrowser) {
-      return null;
-    }
-    return localStorage.getItem(key);
+    return this.storage()?.getItem(key) ?? null;
   }
 
   private write(key: string, value: string): void {
-    if (this.isBrowser) {
-      localStorage.setItem(key, value);
-    }
+    this.storage()?.setItem(key, value);
   }
 
   private remove(key: string): void {
-    if (this.isBrowser) {
-      localStorage.removeItem(key);
+    this.storage()?.removeItem(key);
+  }
+
+  private storage(): Storage | null {
+    if (!this.isBrowser || typeof window === 'undefined') {
+      return null;
+    }
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
     }
   }
 }
