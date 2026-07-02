@@ -1,8 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatIconModule } from '@angular/material/icon';
+import { FilterSelect } from '../filter-select/filter-select';
 import { Role } from '../models/nav-item';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
 
 type UserStatus = 'Active' | 'Inactive';
@@ -115,12 +117,13 @@ const STATUSES: readonly UserStatus[] = ['Active', 'Inactive'];
 
 @Component({
   selector: 'app-users-page',
-  imports: [A11yModule, MatIconModule],
+  imports: [A11yModule, FilterSelect, MatIconModule],
   templateUrl: './users-page.html',
   styleUrl: './users-page.css',
 })
 export class UsersPage {
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.currentUser;
   protected readonly canManage = computed(() => this.user().role === 'AdminIT');
@@ -183,12 +186,20 @@ export class UsersPage {
     this.roleFilter.set(this.toRole(controlValue(event)));
   }
 
+  protected setRoleFilter(value: string): void {
+    this.roleFilter.set(this.toRole(value));
+  }
+
   protected updateDepartmentFilter(event: Event): void {
     this.departmentFilter.set(controlValue(event));
   }
 
   protected updateStatusFilter(event: Event): void {
     this.statusFilter.set(this.toStatus(controlValue(event)));
+  }
+
+  protected setStatusFilter(value: string): void {
+    this.statusFilter.set(this.toStatus(value));
   }
 
   protected toggleActionMenu(username: string): void {

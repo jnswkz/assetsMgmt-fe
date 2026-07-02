@@ -13,8 +13,8 @@
     </label>
 
     <div class="topbar-actions">
-      <button class="icon-button" type="button" aria-label="Toggle theme">
-        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      <button class="icon-button" type="button" data-theme-toggle [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'" (click)="theme.toggle()">
+        <mat-icon aria-hidden="true">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
       </button>
       <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
         <mat-icon aria-hidden="true">notifications</mat-icon>
@@ -41,16 +41,14 @@
       </section>
 
       <section class="disposals-toolbar" aria-label="Disposal filters">
-        <label class="select-button disposals-select">
-          <span class="sr-only">Filter by disposal type</span>
-          <select [value]="typeFilter()" (change)="updateTypeFilter($event)">
-            <option value="">All types</option>
-            @for (type of typeOptions; track type) {
-              <option [value]="type">{{ type }}</option>
-            }
-          </select>
-          <mat-icon aria-hidden="true">expand_more</mat-icon>
-        </label>
+        <app-filter-select
+          class="disposals-select"
+          label="Filter by disposal type"
+          placeholder="All types"
+          [options]="typeOptions"
+          [value]="typeFilter()"
+          (valueChange)="typeFilter.set($event)"
+        ></app-filter-select>
       </section>
 
       <section class="disposals-card" aria-label="Disposals table">

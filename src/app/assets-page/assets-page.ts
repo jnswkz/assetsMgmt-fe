@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
 
 type AssetStatus = 'Allocated' | 'In stock' | 'Maintenance' | 'Locked' | 'Retired' | 'Lost' | 'Disposed';
@@ -269,12 +271,13 @@ const ASSET_UNITS: readonly AssetUnit[] = [
 
 @Component({
   selector: 'app-assets-page',
-  imports: [MatIconModule],
+  imports: [FilterSelect, MatIconModule],
   templateUrl: './assets-page.html',
   styleUrl: './assets-page.css',
 })
 export class AssetsPage {
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.currentUser;
   protected readonly assets = ASSET_UNITS;

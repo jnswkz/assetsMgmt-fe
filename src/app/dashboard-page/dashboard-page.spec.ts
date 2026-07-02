@@ -51,4 +51,20 @@ describe('DashboardPage', () => {
     expect(compiled.textContent).toContain('AH-0017');
     expect(compiled.textContent).not.toContain('AH-0007');
   });
+
+  it('should toggle the document theme from the topbar button', () => {
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const toggle = compiled.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+    const initialTheme = document.documentElement.getAttribute('data-theme');
+
+    toggle?.click();
+    fixture.detectChanges();
+
+    const nextTheme = document.documentElement.getAttribute('data-theme');
+    expect(toggle).toBeTruthy();
+    expect(nextTheme).not.toBe(initialTheme);
+    expect(nextTheme === 'dark' || nextTheme === 'light').toBe(true);
+  });
 });

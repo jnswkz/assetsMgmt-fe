@@ -13,8 +13,8 @@
     </label>
 
     <div class="topbar-actions">
-      <button class="icon-button" type="button" aria-label="Toggle theme">
-        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      <button class="icon-button" type="button" data-theme-toggle [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'" (click)="theme.toggle()">
+        <mat-icon aria-hidden="true">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
       </button>
       <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
         <mat-icon aria-hidden="true">notifications</mat-icon>
@@ -56,15 +56,14 @@
         />
       </label>
 
-      <label class="select-button">
-        <select aria-label="Filter by category" [value]="categoryFilter()" (change)="updateCategoryFilter($event)">
-          <option value="">All categories</option>
-          @for (category of categories; track category) {
-            <option [value]="category">{{ category }}</option>
-          }
-        </select>
-        <mat-icon aria-hidden="true">expand_more</mat-icon>
-      </label>
+      <app-filter-select
+        class="category-filter"
+        label="Filter by category"
+        placeholder="All categories"
+        [options]="categories"
+        [value]="categoryFilter()"
+        (valueChange)="categoryFilter.set($event)"
+      ></app-filter-select>
 
       <div class="view-toggle" aria-label="View mode">
         <button class="toggle-button toggle-button--active" type="button" aria-label="Table view">

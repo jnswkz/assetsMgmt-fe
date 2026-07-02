@@ -1,0 +1,43 @@
+<div class="filter-select">
+  <select class="filter-select__native" [attr.aria-label]="label()" [value]="value()" (change)="updateNativeValue($event)">
+    <option value="">{{ placeholder() }}</option>
+    @for (option of options(); track option) {
+      <option [value]="option">{{ option }}</option>
+    }
+  </select>
+
+  <button
+    class="filter-select__trigger"
+    type="button"
+    [attr.aria-label]="label()"
+    [attr.aria-expanded]="isOpen()"
+    aria-haspopup="listbox"
+    (click)="toggle()"
+    (keydown.escape)="close()"
+  >
+    <span>{{ selectedLabel() }}</span>
+    <mat-icon aria-hidden="true">expand_more</mat-icon>
+  </button>
+
+  @if (isOpen()) {
+    <button class="filter-select__backdrop" type="button" aria-label="Close {{ label() }}" (click)="close()"></button>
+
+    <div class="filter-select__menu" role="listbox" [attr.aria-label]="label()">
+      @for (option of menuOptions(); track option.value) {
+        <button
+          class="filter-select__option"
+          type="button"
+          role="option"
+          [class.filter-select__option--active]="option.value === value()"
+          [attr.aria-selected]="option.value === value()"
+          (click)="selectValue(option.value)"
+        >
+          <span>{{ option.label }}</span>
+          @if (option.value === value()) {
+            <mat-icon aria-hidden="true">check</mat-icon>
+          }
+        </button>
+      }
+    </div>
+  }
+</div>

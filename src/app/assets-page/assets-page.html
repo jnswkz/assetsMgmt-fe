@@ -13,8 +13,8 @@
     </label>
 
     <div class="topbar-actions">
-      <button class="icon-button" type="button" aria-label="Toggle theme">
-        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      <button class="icon-button" type="button" data-theme-toggle [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'" (click)="theme.toggle()">
+        <mat-icon aria-hidden="true">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
       </button>
       <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
         <mat-icon aria-hidden="true">notifications</mat-icon>
@@ -177,25 +177,23 @@
           />
         </label>
 
-        <label class="select-button select-button--status">
-          <select aria-label="Filter by status" [value]="statusFilter()" (change)="updateStatusFilter($event)">
-            <option value="">All statuses</option>
-            @for (status of statuses; track status) {
-              <option [value]="status">{{ status }}</option>
-            }
-          </select>
-          <mat-icon aria-hidden="true">expand_more</mat-icon>
-        </label>
+        <app-filter-select
+          class="select-button--status"
+          label="Filter by status"
+          placeholder="All statuses"
+          [options]="statuses"
+          [value]="statusFilter()"
+          (valueChange)="statusFilter.set($event)"
+        ></app-filter-select>
 
-        <label class="select-button select-button--model">
-          <select aria-label="Filter by model" [value]="modelFilter()" (change)="updateModelFilter($event)">
-            <option value="">All models</option>
-            @for (model of models; track model) {
-              <option [value]="model">{{ model }}</option>
-            }
-          </select>
-          <mat-icon aria-hidden="true">expand_more</mat-icon>
-        </label>
+        <app-filter-select
+          class="select-button--model"
+          label="Filter by model"
+          placeholder="All models"
+          [options]="models"
+          [value]="modelFilter()"
+          (valueChange)="modelFilter.set($event)"
+        ></app-filter-select>
       </section>
 
       <section class="assets-card" aria-label="Assets table">

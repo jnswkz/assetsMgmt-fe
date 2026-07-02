@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
 
 interface AssetModel {
@@ -81,12 +83,13 @@ const ASSET_MODELS: readonly AssetModel[] = [
 
 @Component({
   selector: 'app-asset-catalog-page',
-  imports: [MatIconModule],
+  imports: [FilterSelect, MatIconModule],
   templateUrl: './asset-catalog-page.html',
   styleUrl: './asset-catalog-page.css',
 })
 export class AssetCatalogPage {
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.currentUser;
   protected readonly models = ASSET_MODELS;

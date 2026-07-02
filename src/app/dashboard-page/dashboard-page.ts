@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 import { Role } from '../models/nav-item';
 import { controlValue, matchesSearch } from '../utils/search';
 
@@ -124,6 +125,7 @@ const ACTIVITIES: readonly ActivityRow[] = [
 })
 export class DashboardPage {
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.currentUser;
   protected readonly globalSearch = signal('');

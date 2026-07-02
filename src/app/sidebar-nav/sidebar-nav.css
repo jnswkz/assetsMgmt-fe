@@ -174,7 +174,7 @@
   font-size: 16px;
 }
 
-html[data-theme="dark"] .sidebar-nav {
+:host-context(html[data-theme="dark"]) .sidebar-nav {
   --sidebar-primary: #8b7cf6;
   --sidebar-primary-hover: #7c6cf0;
   --sidebar-text: #f8fafc;
@@ -184,10 +184,10 @@ html[data-theme="dark"] .sidebar-nav {
   --sidebar-focus: rgba(139, 124, 246, 0.36);
 }
 
-html[data-theme="dark"] .nav-item:hover {
+:host-context(html[data-theme="dark"]) .nav-item:hover {
   background: #1b2030;
 }
 
-html[data-theme="dark"] .nav-item--active:hover {
+:host-context(html[data-theme="dark"]) .nav-item--active:hover {
   background: var(--sidebar-primary-hover);
 }

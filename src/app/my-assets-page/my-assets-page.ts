@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 import { controlValue, matchesSearch } from '../utils/search';
 
 interface AssignedAsset {
@@ -43,6 +44,7 @@ const ASSIGNED_ASSETS: readonly AssignedAsset[] = [
 })
 export class MyAssetsPage {
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.currentUser;
   protected readonly assignedAssets = ASSIGNED_ASSETS;

@@ -116,6 +116,8 @@ html[data-theme="dark"] .users-page {
   height: 64px;
   justify-content: space-between;
   padding: 0 24px;
+  position: relative;
+  z-index: 20;
 }
 
 .dashboard-page .topbar,
@@ -183,6 +185,8 @@ html[data-theme="dark"] .users-page {
 
 .topbar-actions {
   gap: 6px;
+  position: relative;
+  z-index: 21;
 }
 
 .dashboard-page button,
@@ -211,8 +215,12 @@ html[data-theme="dark"] .users-page {
 .icon-button,
 .toggle-button,
 .row-actions button {
+  align-items: center;
   border-radius: 8px;
+  display: inline-flex;
   height: 36px;
+  justify-content: center;
+  pointer-events: auto;
   position: relative;
   width: 36px;
 }
@@ -372,7 +380,7 @@ dt {
   appearance: none;
   background: transparent;
   border: 0;
-  color: var(--text);
+  color: #0a0a0a;
   flex: 1;
   font: inherit;
   min-width: 0;
@@ -381,8 +389,8 @@ dt {
 
 .select-button option,
 .user-form option {
-  background: var(--option-bg);
-  color: var(--option-text);
+  background: #ffffff !important;
+  color: #0a0a0a !important;
 }
 
 .select-button mat-icon {
@@ -657,6 +665,11 @@ html[data-theme="dark"] .mat-drawer {
   color: #f8fafc;
 }
 
+html[data-theme="dark"] .app-sidenav {
+  background: #111722;
+  color: #f8fafc;
+}
+
 html[data-theme="dark"] .topbar {
   background: var(--surface);
   border-bottom-color: var(--border);
@@ -732,4 +745,14 @@ html[data-theme="dark"] .user-form select {
 
 html[data-theme="dark"] .search-box span {
   border-color: #3f4655;
+}
+
+html[data-theme="dark"] .select-button select {
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] .select-button option,
+html[data-theme="dark"] .user-form option {
+  background: #151a24 !important;
+  color: #f8fafc !important;
 }

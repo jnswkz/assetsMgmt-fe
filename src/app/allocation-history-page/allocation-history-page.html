@@ -13,8 +13,8 @@
     </label>
 
     <div class="topbar-actions">
-      <button class="icon-button" type="button" aria-label="Toggle theme">
-        <mat-icon aria-hidden="true">dark_mode</mat-icon>
+      <button class="icon-button" type="button" data-theme-toggle [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'" (click)="theme.toggle()">
+        <mat-icon aria-hidden="true">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
       </button>
       <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
         <mat-icon aria-hidden="true">notifications</mat-icon>
@@ -41,27 +41,23 @@
       </section>
 
       <section class="history-toolbar" aria-label="Allocation history filters">
-        <label class="select-button history-select">
-          <span class="sr-only">Filter by asset</span>
-          <select [value]="assetFilter()" (change)="updateAssetFilter($event)">
-            <option value="">All assets</option>
-            @for (asset of assetOptions; track asset) {
-              <option [value]="asset">{{ asset }}</option>
-            }
-          </select>
-          <mat-icon aria-hidden="true">expand_more</mat-icon>
-        </label>
+        <app-filter-select
+          class="history-select"
+          label="Filter by asset"
+          placeholder="All assets"
+          [options]="assetOptions"
+          [value]="assetFilter()"
+          (valueChange)="assetFilter.set($event)"
+        ></app-filter-select>
 
-        <label class="select-button history-select">
-          <span class="sr-only">Filter by user</span>
-          <select [value]="userFilter()" (change)="updateUserFilter($event)">
-            <option value="">All users</option>
-            @for (profile of userOptions; track profile) {
-              <option [value]="profile">{{ profile }}</option>
-            }
-          </select>
-          <mat-icon aria-hidden="true">expand_more</mat-icon>
-        </label>
+        <app-filter-select
+          class="history-select"
+          label="Filter by user"
+          placeholder="All users"
+          [options]="userOptions"
+          [value]="userFilter()"
+          (valueChange)="userFilter.set($event)"
+        ></app-filter-select>
       </section>
 
       <section class="history-card" aria-label="Allocation history table">

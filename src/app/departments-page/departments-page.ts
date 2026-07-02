@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 import { controlValue, matchesSearch } from '../utils/search';
 
 interface Department {
@@ -31,6 +32,7 @@ const DEPARTMENTS: readonly Department[] = [
 })
 export class DepartmentsPage {
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.currentUser;
   protected readonly canView = computed(() => this.user().role === 'AdminIT' || this.user().role === 'Manager');

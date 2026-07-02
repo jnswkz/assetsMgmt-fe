@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 import { controlValue, matchesSearch } from '../utils/search';
 
 type RequestStatus = 'Pending' | 'Approved' | 'Cancelled';
@@ -78,6 +79,7 @@ const REQUESTS: readonly AssetRequest[] = [
 })
 export class MyRequestsPage {
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.currentUser;
   protected readonly requests = REQUESTS;

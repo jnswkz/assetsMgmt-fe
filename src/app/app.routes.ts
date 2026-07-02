@@ -1,6 +1,4 @@
 import { Routes } from '@angular/router';
-import { AssetCatalogPage } from './asset-catalog-page/asset-catalog-page';
-import { AssetsPage } from './assets-page/assets-page';
 import { DashboardPage } from './dashboard-page/dashboard-page';
 import { LoginPage } from './login-page/login-page';
 
@@ -15,7 +13,7 @@ export const routes: Routes = [
   },
   {
     path: 'assets/catalog',
-    component: AssetCatalogPage,
+    loadComponent: () => import('./asset-catalog-page/asset-catalog-page').then(m => m.AssetCatalogPage),
   },
   {
     path: 'assets/mine',
@@ -23,7 +21,7 @@ export const routes: Routes = [
   },
   {
     path: 'assets',
-    component: AssetsPage,
+    loadComponent: () => import('./assets-page/assets-page').then(m => m.AssetsPage),
   },
   {
     path: 'requests/mine',

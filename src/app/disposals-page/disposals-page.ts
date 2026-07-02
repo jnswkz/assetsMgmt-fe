@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
 
 type DisposalType = 'Sold' | 'Lost' | 'Donated' | 'Scrapped';
@@ -51,12 +53,13 @@ const DISPOSALS: readonly DisposalRecord[] = [
 
 @Component({
   selector: 'app-disposals-page',
-  imports: [MatIconModule],
+  imports: [FilterSelect, MatIconModule],
   templateUrl: './disposals-page.html',
   styleUrl: './disposals-page.css',
 })
 export class DisposalsPage {
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.currentUser;
   protected readonly canView = computed(() => this.user().role === 'AdminIT' || this.user().role === 'Manager');
