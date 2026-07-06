@@ -1,5 +1,5 @@
 import { UserMenu } from '../user-menu/user-menu';
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { forkJoin, of } from 'rxjs';
@@ -7,9 +7,17 @@ import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { ReportsService } from '../services/reports.service';
 import { RequestsService } from '../services/requests.service';
+import { AssetsService } from '../services/assets.service';
+import { AllocationsService } from '../services/allocations.service';
 import { Role } from '../models/nav-item';
 import { controlValue, matchesSearch } from '../utils/search';
-import { DashboardStatsDto, RequestListItem } from '../models/api.model';
+import {
+  AssetInstanceListItem,
+  AssetModelListItem,
+  DashboardStatsDto,
+  MyAssetItem,
+  RequestListItem,
+} from '../models/api.model';
 import { assetCategoryLabel, assetStatusLabel, requestStatusLabel } from '../models/enums';
 
 interface StatCard {
@@ -35,6 +43,37 @@ interface RequestRow {
   readonly asset: string;
   readonly details: string;
   readonly status: string;
+  readonly lockExpiresAt: string;
+}
+
+interface AssignedAssetRow {
+  readonly id: string;
+  readonly code: string;
+  readonly model: string;
+  readonly status: string;
+  readonly location: string;
+  readonly assignedSince: string;
+}
+
+interface AvailableModelRow {
+  readonly id: string;
+  readonly name: string;
+  readonly category: string;
+  readonly manufacturer: string;
+  readonly instanceCount: number;
+}
+
+interface AvailableAssetRow {
+  readonly id: string;
+  readonly code: string;
+  readonly model: string;
+  readonly location: string;
+}
+
+interface AttentionItem {
+  readonly label: string;
+  readonly detail: string;
+  readonly icon: string;
 }
 
 // Stable colors per asset status index (matches enums.ASSET_STATUS order).
@@ -66,11 +105,14 @@ const EMPTY_DASHBOARD_STATS: DashboardStatsDto = {
   imports: [RouterModule, MatIconModule, UserMenu],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardPage {
   private readonly auth = inject(AuthService);
   private readonly reports = inject(ReportsService);
   private readonly requestsApi = inject(RequestsService);
+  private readonly assetsApi = inject(AssetsService);
+  private readonly allocationsApi = inject(AllocationsService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.profile;
@@ -78,8 +120,12 @@ export class DashboardPage {
 
   private readonly stats = signal<DashboardStatsDto | null>(null);
   private readonly requests = signal<readonly RequestRow[]>([]);
+  private readonly assignedAssets = signal<readonly AssignedAssetRow[]>([]);
+  private readonly availableModels = signal<readonly AvailableModelRow[]>([]);
+  private readonly availableAssets = signal<readonly AvailableAssetRow[]>([]);
   protected readonly isLoading = signal(true);
   protected readonly errorMessage = signal('');
+  protected readonly isEmployeeDashboard = computed(() => (this.auth.role() ?? 'Employee') === 'Employee');
 
   protected readonly statusSlices = computed<readonly StatusSlice[]>(() =>
     (this.stats()?.byStatus ?? []).map(entry => ({
@@ -109,9 +155,67 @@ export class DashboardPage {
     };
   });
 
+  protected readonly employeeStats = computed<readonly StatCard[]>(() => {
+    const requests = this.requests();
+    const assigned = this.assignedAssets();
+    const pending = requests.filter(request => request.status === 'Pending').length;
+    const approved = requests.filter(request => request.status === 'Approved').length;
+    const needsAttention = this.attentionItems().length;
+
+    return [
+      { label: 'Assigned to me', value: assigned.length.toString(), icon: 'devices', tone: 'blue' },
+      { label: 'Pending requests', value: pending.toString(), icon: 'pending_actions', tone: 'amber' },
+      { label: 'Approved requests', value: approved.toString(), icon: 'task_alt', tone: 'green' },
+      { label: 'Needs attention', value: needsAttention.toString(), icon: 'priority_high', tone: 'orange' },
+    ];
+  });
+
+  protected readonly attentionItems = computed<readonly AttentionItem[]>(() => {
+    const items: AttentionItem[] = [];
+    const pendingWithLocks = this.requests().filter(request => request.status === 'Pending' && request.lockExpiresAt !== '-');
+
+    for (const request of pendingWithLocks.slice(0, 2)) {
+      items.push({
+        label: 'Request lock active',
+        detail: `${request.asset} is held until ${request.lockExpiresAt}.`,
+        icon: 'lock_clock',
+      });
+    }
+
+    for (const asset of this.assignedAssets().filter(asset => asset.status === 'Maintenance').slice(0, 2)) {
+      items.push({
+        label: 'Asset in maintenance',
+        detail: `${asset.code} · ${asset.model}`,
+        icon: 'construction',
+      });
+    }
+
+    return items;
+  });
+
   protected readonly filteredRequests = computed(() =>
     this.requests().filter(request =>
-      matchesSearch(this.globalSearch(), [request.id, request.asset, request.details, request.status])
+      matchesSearch(this.globalSearch(), [request.id, request.asset, request.details, request.status, request.lockExpiresAt])
+    )
+  );
+  protected readonly filteredAssignedAssets = computed(() =>
+    this.assignedAssets().filter(asset =>
+      matchesSearch(this.globalSearch(), [asset.code, asset.model, asset.status, asset.location, asset.assignedSince])
+    )
+  );
+  protected readonly filteredAvailableModels = computed(() =>
+    this.availableModels().filter(model =>
+      matchesSearch(this.globalSearch(), [
+        model.name,
+        model.category,
+        model.manufacturer,
+        model.instanceCount,
+      ])
+    )
+  );
+  protected readonly filteredAvailableAssets = computed(() =>
+    this.availableAssets().filter(asset =>
+      matchesSearch(this.globalSearch(), [asset.code, asset.model, asset.location])
     )
   );
 
@@ -121,13 +225,17 @@ export class DashboardPage {
 
   private load(): void {
     const employeeView = this.auth.role() === 'Employee';
-    const requests$ = employeeView
-      ? this.requestsApi.mine({ page: 1, pageSize: 6 })
-      : this.requestsApi.pending({ page: 1, pageSize: 6 });
-    const stats$ = employeeView ? of(EMPTY_DASHBOARD_STATS) : this.reports.dashboard();
 
     this.isLoading.set(true);
     this.errorMessage.set('');
+
+    if (employeeView) {
+      this.loadEmployeeDashboard();
+      return;
+    }
+
+    const requests$ = this.requestsApi.pending({ page: 1, pageSize: 6 });
+    const stats$ = this.reports.dashboard();
 
     forkJoin({
       stats: stats$,
@@ -140,6 +248,29 @@ export class DashboardPage {
       },
       error: () => {
         this.errorMessage.set('Unable to load dashboard data.');
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  private loadEmployeeDashboard(): void {
+    forkJoin({
+      assignedAssets: this.allocationsApi.mineAssets(),
+      requests: this.requestsApi.mine({ page: 1, pageSize: 6 }),
+      availableAssets: this.assetsApi.list({ status: 0, page: 1, pageSize: 4 }),
+      models: this.assetsApi.modelsPaged({ page: 1, pageSize: 5 }),
+      stats: of(EMPTY_DASHBOARD_STATS),
+    }).subscribe({
+      next: ({ assignedAssets, requests, availableAssets, models, stats }) => {
+        this.stats.set(stats);
+        this.assignedAssets.set(assignedAssets.map(toAssignedAssetRow));
+        this.requests.set(requests.items.map(toRequestRow));
+        this.availableAssets.set(availableAssets.items.map(toAvailableAssetRow));
+        this.availableModels.set(models.items.map(toAvailableModelRow));
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.errorMessage.set('Unable to load your workspace.');
         this.isLoading.set(false);
       },
     });
@@ -161,7 +292,60 @@ function toRequestRow(item: RequestListItem): RequestRow {
     asset,
     details: item.requesterName ?? '',
     status: requestStatusLabel(item.status),
+    lockExpiresAt: formatShortDateTime(item.lockExpiresAt),
   };
+}
+
+function toAssignedAssetRow(item: MyAssetItem): AssignedAssetRow {
+  return {
+    id: item.assetInstanceId,
+    code: item.assetCode ?? '-',
+    model: item.modelName ?? '-',
+    status: assetStatusLabel(item.status),
+    location: item.location ?? '-',
+    assignedSince: formatDate(item.startDate),
+  };
+}
+
+function toAvailableModelRow(item: AssetModelListItem): AvailableModelRow {
+  return {
+    id: item.id,
+    name: item.name ?? '-',
+    category: assetCategoryLabel(item.category),
+    manufacturer: item.manufacturer ?? '-',
+    instanceCount: item.instanceCount,
+  };
+}
+
+function toAvailableAssetRow(item: AssetInstanceListItem): AvailableAssetRow {
+  return {
+    id: item.id,
+    code: item.assetCode ?? '-',
+    model: item.modelName ?? '-',
+    location: item.location ?? '-',
+  };
+}
+
+function formatDate(value: string | null | undefined): string {
+  return value?.slice(0, 10) || '-';
+}
+
+function formatShortDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return '-';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value.slice(0, 16);
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function buildStats(role: Role, stats: DashboardStatsDto | null): readonly StatCard[] {

@@ -41,6 +41,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Users', icon: 'group', route: '/admin/users', roles: ['AdminIT'] },
     ],
   },
+  {
+    label: 'Assistant',
+    items: [
+      { label: 'AI Assistant', icon: 'smart_toy', route: '/assistant', roles: ['AdminIT', 'Manager', 'Employee'] },
+    ],
+  },
 ];
 
 export const SETTINGS_NAV_ITEM: NavItem = {

@@ -13,7 +13,13 @@
     </label>
 
     <div class="topbar-actions">
-      <button class="icon-button" type="button" data-theme-toggle [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'" (click)="theme.toggle()">
+      <button
+        class="icon-button"
+        type="button"
+        data-theme-toggle
+        [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+        (click)="theme.toggle()"
+      >
         <mat-icon aria-hidden="true">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
       </button>
       <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
@@ -28,11 +34,17 @@
     <section class="page-header">
       <div>
         <h1 id="dashboard-title">Welcome, {{ user().firstName }}</h1>
-        <p>A snapshot of your fleet across procurement, allocation, and maintenance.</p>
+        <p>
+          @if (isEmployeeDashboard()) {
+            Your devices, active requests, and available equipment in one place.
+          } @else {
+            A snapshot of your fleet across procurement, allocation, and maintenance.
+          }
+        </p>
       </div>
 
-      <a class="primary-link" routerLink="/assets">
-        <span>View all assets</span>
+      <a class="primary-link" [routerLink]="isEmployeeDashboard() ? '/requests/mine' : '/assets'">
+        <span>{{ isEmployeeDashboard() ? 'Request device' : 'View all assets' }}</span>
         <mat-icon aria-hidden="true">north_east</mat-icon>
       </a>
     </section>
@@ -41,101 +53,263 @@
       <p class="empty-state" role="alert">{{ errorMessage() }}</p>
     }
 
-    <section class="stats-grid" aria-label="Asset summary">
-      @for (stat of view().stats; track stat.label) {
-        <article class="stat-card">
-          <div>
-            <p>{{ stat.label }}</p>
-            <strong>{{ stat.value }}</strong>
-          </div>
-          <span class="stat-icon" [class]="'stat-icon stat-icon--' + stat.tone">
-            <mat-icon aria-hidden="true">{{ stat.icon }}</mat-icon>
-          </span>
-        </article>
-      }
-    </section>
+    @if (isEmployeeDashboard()) {
+      <section class="stats-grid stats-grid--employee" aria-label="Personal asset summary">
+        @for (stat of employeeStats(); track stat.label) {
+          <article class="stat-card">
+            <div>
+              <p>{{ stat.label }}</p>
+              <strong>{{ stat.value }}</strong>
+            </div>
+            <span class="stat-icon" [class]="'stat-icon stat-icon--' + stat.tone">
+              <mat-icon aria-hidden="true">{{ stat.icon }}</mat-icon>
+            </span>
+          </article>
+        }
+      </section>
 
-    <section class="chart-grid" aria-label="Asset charts">
-      <article class="panel status-panel">
-        <h2>Assets by status</h2>
-        <div class="donut" [style.background]="donutBackground()" aria-hidden="true">
-          <span></span>
-        </div>
-        <ul class="legend" aria-label="Assets by status legend">
-          @for (slice of statusSlices(); track slice.label) {
-            <li>
-              <span [style.background]="slice.color"></span>
-              {{ slice.label }}
-            </li>
-          } @empty {
-            <li class="empty-state">No data</li>
-          }
-        </ul>
-      </article>
-
-      <article class="panel category-panel">
-        <h2>Assets by category</h2>
-        <div class="bar-chart" aria-label="Assets by category bar chart">
-          <div class="bars">
-            @for (bar of categoryBars(); track bar.label) {
-              <div class="bar-column">
-                <span class="bar" [style.height]="barHeight(bar.value)"></span>
-                <span class="bar-label">{{ bar.label }}</span>
-              </div>
-            } @empty {
-              <p class="empty-state">No data</p>
-            }
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <section class="lower-grid">
-      <article class="panel list-panel">
-        <header class="panel-header">
-          <h2>{{ view().requestsTitle }}</h2>
-          @if (view().showApprovalActions) {
-            <a routerLink="/requests/approvals">
-              <span>View all</span>
+      <section class="employee-workspace" aria-label="Employee asset workspace">
+        <article class="panel employee-panel employee-panel--devices">
+          <header class="panel-header">
+            <h2>My devices</h2>
+            <a routerLink="/assets/mine">
+              <span>Open</span>
               <mat-icon aria-hidden="true">north_east</mat-icon>
             </a>
-          }
-        </header>
+          </header>
 
-        <div class="request-list">
-          @for (request of filteredRequests(); track request.id) {
-            <article class="request-row">
-              <span class="asset-id">{{ request.id }}</span>
-              <div class="request-copy">
-                <strong>{{ request.asset }}</strong>
-                <p>{{ request.details }}</p>
-              </div>
-              <span class="status-badge" [class]="'status-badge status-badge--' + request.status.toLowerCase()">
-                {{ request.status }}
-              </span>
-              @if (view().showApprovalActions) {
-                <div class="approval-actions">
-                  <button class="action-button action-button--approve" type="button" aria-label="Approve request">
-                    <mat-icon aria-hidden="true">check</mat-icon>
-                  </button>
-                  <button class="action-button action-button--reject" type="button" aria-label="Reject request">
-                    <mat-icon aria-hidden="true">close</mat-icon>
-                  </button>
+          <div class="compact-list">
+            @for (asset of filteredAssignedAssets(); track asset.id) {
+              <article class="compact-row">
+                <span class="row-icon row-icon--device">
+                  <mat-icon aria-hidden="true">devices</mat-icon>
+                </span>
+                <div class="row-copy">
+                  <strong>{{ asset.code }} · {{ asset.model }}</strong>
+                  <p>{{ asset.status }} · {{ asset.location }} · since {{ asset.assignedSince }}</p>
                 </div>
-              }
-            </article>
-          } @empty {
-            <p class="empty-state">No requests match your search.</p>
-          }
-        </div>
-      </article>
+              </article>
+            } @empty {
+              <p class="empty-state">No assigned devices match your search.</p>
+            }
+          </div>
+        </article>
 
-      <article class="panel activity-panel">
-        <h2>Recent activity</h2>
-        <div class="activity-list">
-          <p class="empty-state">Activity feed is not available yet.</p>
-        </div>
-      </article>
-    </section>
+        <article class="panel employee-panel employee-panel--requests">
+          <header class="panel-header">
+            <h2>Active requests</h2>
+            <a routerLink="/requests/mine">
+              <span>Open</span>
+              <mat-icon aria-hidden="true">north_east</mat-icon>
+            </a>
+          </header>
+
+          <div class="request-list">
+            @for (request of filteredRequests(); track request.id) {
+              <article class="request-row request-row--employee">
+                <span class="asset-id">{{ request.id }}</span>
+                <div class="request-copy">
+                  <strong>{{ request.asset }}</strong>
+                  <p>{{ request.status }} · lock {{ request.lockExpiresAt }}</p>
+                </div>
+                <span class="status-badge" [class]="'status-badge status-badge--' + request.status.toLowerCase()">
+                  {{ request.status }}
+                </span>
+              </article>
+            } @empty {
+              <p class="empty-state">No requests match your search.</p>
+            }
+          </div>
+        </article>
+
+        <article class="panel employee-panel employee-panel--available">
+          <header class="panel-header">
+            <h2>Available to request</h2>
+            <a routerLink="/requests/mine">
+              <span>Request</span>
+              <mat-icon aria-hidden="true">north_east</mat-icon>
+            </a>
+          </header>
+
+          <div class="availability-grid">
+            <section aria-label="Available models">
+              <h3>Models</h3>
+              <div class="compact-list compact-list--flush">
+                @for (model of filteredAvailableModels(); track model.id) {
+                  <article class="compact-row">
+                    <span class="row-icon row-icon--model">
+                      <mat-icon aria-hidden="true">category</mat-icon>
+                    </span>
+                    <div class="row-copy">
+                      <strong>{{ model.name }}</strong>
+                      <p>{{ model.category }} · {{ model.manufacturer }} · {{ model.instanceCount }} assets</p>
+                    </div>
+                  </article>
+                } @empty {
+                  <p class="empty-state">No requestable models match your search.</p>
+                }
+              </div>
+            </section>
+
+            <section aria-label="Available assets">
+              <h3>Assets</h3>
+              <div class="compact-list compact-list--flush">
+                @for (asset of filteredAvailableAssets(); track asset.id) {
+                  <article class="compact-row">
+                    <span class="row-icon row-icon--asset">
+                      <mat-icon aria-hidden="true">inventory_2</mat-icon>
+                    </span>
+                    <div class="row-copy">
+                      <strong>{{ asset.code }}</strong>
+                      <p>{{ asset.model }} · {{ asset.location }}</p>
+                    </div>
+                  </article>
+                } @empty {
+                  <p class="empty-state">No available assets match your search.</p>
+                }
+              </div>
+            </section>
+          </div>
+        </article>
+
+        <article class="panel employee-panel employee-panel--actions">
+          <h2>Quick actions</h2>
+          <div class="quick-actions">
+            <a routerLink="/requests/mine">
+              <mat-icon aria-hidden="true">add_circle</mat-icon>
+              <span>Request device</span>
+            </a>
+            <a routerLink="/assets/mine">
+              <mat-icon aria-hidden="true">devices</mat-icon>
+              <span>View my assets</span>
+            </a>
+            <a routerLink="/assistant">
+              <mat-icon aria-hidden="true">smart_toy</mat-icon>
+              <span>Ask AI Assistant</span>
+            </a>
+            <a routerLink="/assistant">
+              <mat-icon aria-hidden="true">plagiarism</mat-icon>
+              <span>Find manual</span>
+            </a>
+          </div>
+        </article>
+
+        <article class="panel employee-panel employee-panel--attention">
+          <h2>Needs attention</h2>
+          <div class="compact-list">
+            @for (item of attentionItems(); track item.label + item.detail) {
+              <article class="compact-row">
+                <span class="row-icon row-icon--attention">
+                  <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+                </span>
+                <div class="row-copy">
+                  <strong>{{ item.label }}</strong>
+                  <p>{{ item.detail }}</p>
+                </div>
+              </article>
+            } @empty {
+              <p class="empty-state">Nothing needs your attention right now.</p>
+            }
+          </div>
+        </article>
+      </section>
+    } @else {
+      <section class="stats-grid" aria-label="Asset summary">
+        @for (stat of view().stats; track stat.label) {
+          <article class="stat-card">
+            <div>
+              <p>{{ stat.label }}</p>
+              <strong>{{ stat.value }}</strong>
+            </div>
+            <span class="stat-icon" [class]="'stat-icon stat-icon--' + stat.tone">
+              <mat-icon aria-hidden="true">{{ stat.icon }}</mat-icon>
+            </span>
+          </article>
+        }
+      </section>
+
+      <section class="chart-grid" aria-label="Asset charts">
+        <article class="panel status-panel">
+          <h2>Assets by status</h2>
+          <div class="donut" [style.background]="donutBackground()" aria-hidden="true">
+            <span></span>
+          </div>
+          <ul class="legend" aria-label="Assets by status legend">
+            @for (slice of statusSlices(); track slice.label) {
+              <li>
+                <span [style.background]="slice.color"></span>
+                {{ slice.label }}
+              </li>
+            } @empty {
+              <li class="empty-state">No data</li>
+            }
+          </ul>
+        </article>
+
+        <article class="panel category-panel">
+          <h2>Assets by category</h2>
+          <div class="bar-chart" aria-label="Assets by category bar chart">
+            <div class="bars">
+              @for (bar of categoryBars(); track bar.label) {
+                <div class="bar-column">
+                  <span class="bar" [style.height]="barHeight(bar.value)"></span>
+                  <span class="bar-label">{{ bar.label }}</span>
+                </div>
+              } @empty {
+                <p class="empty-state">No data</p>
+              }
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="lower-grid">
+        <article class="panel list-panel">
+          <header class="panel-header">
+            <h2>{{ view().requestsTitle }}</h2>
+            @if (view().showApprovalActions) {
+              <a routerLink="/requests/approvals">
+                <span>View all</span>
+                <mat-icon aria-hidden="true">north_east</mat-icon>
+              </a>
+            }
+          </header>
+
+          <div class="request-list">
+            @for (request of filteredRequests(); track request.id) {
+              <article class="request-row">
+                <span class="asset-id">{{ request.id }}</span>
+                <div class="request-copy">
+                  <strong>{{ request.asset }}</strong>
+                  <p>{{ request.details }}</p>
+                </div>
+                <span class="status-badge" [class]="'status-badge status-badge--' + request.status.toLowerCase()">
+                  {{ request.status }}
+                </span>
+                @if (view().showApprovalActions) {
+                  <div class="approval-actions">
+                    <button class="action-button action-button--approve" type="button" aria-label="Approve request">
+                      <mat-icon aria-hidden="true">check</mat-icon>
+                    </button>
+                    <button class="action-button action-button--reject" type="button" aria-label="Reject request">
+                      <mat-icon aria-hidden="true">close</mat-icon>
+                    </button>
+                  </div>
+                }
+              </article>
+            } @empty {
+              <p class="empty-state">No requests match your search.</p>
+            }
+          </div>
+        </article>
+
+        <article class="panel activity-panel">
+          <h2>Recent activity</h2>
+          <div class="activity-list">
+            <p class="empty-state">Activity feed is not available yet.</p>
+          </div>
+        </article>
+      </section>
+    }
   </main>
 </div>

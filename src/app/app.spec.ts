@@ -37,4 +37,12 @@ describe('App', () => {
     expect(compiled.querySelector('app-sidebar-nav')).toBeNull();
     expect(compiled.querySelector('app-login-page')).toBeTruthy();
   });
+
+  it('should not render the legacy floating employee chat widget in the shell', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('app-employee-agent-chat')).toBeNull();
+  });
 });

@@ -1,6 +1,8 @@
 .app-shell {
   background: var(--app-bg, #ffffff);
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   width: 100%;
 }
 
@@ -54,12 +56,16 @@
 }
 
 .app-sidenav {
+  height: 100%;
   width: 256px;
 }
 
 .app-content {
   background: var(--app-bg, #ffffff);
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 @keyframes pulse {

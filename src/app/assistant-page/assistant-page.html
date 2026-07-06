@@ -1,0 +1,116 @@
+<div class="assistant-page">
+  <header class="topbar">
+    <label class="search-box" for="assistant-message-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="assistant-message-search"
+        type="search"
+        placeholder="Search messages, suggestions, or sources..."
+        [value]="messageSearch()"
+        (input)="updateSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button
+        class="icon-button"
+        type="button"
+        data-theme-toggle
+        [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+        (click)="theme.toggle()"
+      >
+        <mat-icon aria-hidden="true">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <app-user-menu />
+    </div>
+  </header>
+
+  <main class="assistant-content" aria-labelledby="assistant-title">
+    <section class="page-header">
+      <div>
+        <h1 id="assistant-title">AI Assistant</h1>
+        <p>Ask about your assets, manuals, warranties, or create a maintenance draft.</p>
+      </div>
+
+      <button class="primary-action" type="button" (click)="startNewConversation()">
+        <mat-icon aria-hidden="true">add_comment</mat-icon>
+        New chat
+      </button>
+    </section>
+
+    @if (errorMessage()) {
+      <p class="error-banner" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <section class="assistant-shell" aria-label="Assistant chat">
+      <div class="assistant-messages" aria-live="polite">
+        @if (!hasMessages()) {
+          <article class="empty-state-card">
+            <mat-icon aria-hidden="true">smart_toy</mat-icon>
+            <h2>Start a conversation</h2>
+            <p>Try asking which devices are assigned to you, request a manual, or draft a maintenance request.</p>
+          </article>
+        } @else {
+          @for (message of filteredMessages(); track message.id) {
+            <article class="message" [class.message--user]="message.role === 'user'">
+              <div class="message__bubble">
+                <p>{{ message.content }}</p>
+
+                @if (message.sources.length > 0) {
+                  <div class="message__sources">
+                    <span>Sources</span>
+                    <ul>
+                      @for (source of message.sources; track source.url) {
+                        <li>
+                          <a [href]="source.url" target="_blank" rel="noopener noreferrer">
+                            {{ source.title }}
+                          </a>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
+
+                @if (message.suggestedActions.length > 0) {
+                  <div class="message__actions">
+                    @for (action of message.suggestedActions; track action) {
+                      <button type="button" (click)="sendSuggestedAction(action)" [disabled]="isSending()">
+                        {{ action }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </article>
+          }
+
+          @if (isSending()) {
+            <article class="message">
+              <div class="message__bubble message__bubble--typing">Thinking...</div>
+            </article>
+          }
+        }
+      </div>
+
+      <footer class="assistant-composer">
+        <textarea
+          rows="3"
+          [value]="inputText()"
+          (input)="updateInput($event)"
+          (keydown)="handleComposerKeydown($event)"
+          placeholder="Ask about assets, manuals, warranty, or maintenance"
+          aria-label="Message the assistant"
+        ></textarea>
+        <button class="primary-action primary-action--send" type="button" [disabled]="!canSend()" (click)="send()">
+          <mat-icon aria-hidden="true">send</mat-icon>
+          Send
+        </button>
+      </footer>
+    </section>
+  </main>
+</div>
