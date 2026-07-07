@@ -2,8 +2,32 @@
   display: block;
 }
 
+.operations-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 20px;
+}
+
+.dashboard-table-wrap { overflow-x: auto; }
+.dashboard-table-wrap table { border-collapse: collapse; width: 100%; }
+.dashboard-table-wrap th, .dashboard-table-wrap td { border-bottom: 1px solid var(--border); padding: 10px; text-align: left; }
+.timeline-row { border-bottom: 1px solid var(--border); padding: 10px 0; }
+.timeline-row p { margin: 4px 0; }
+.inventory-entry { display: grid; gap: 8px; }
+.inventory-results { list-style: none; margin: 12px 0 0; max-height: 220px; overflow: auto; padding: 0; }
+.inventory-results li { display: flex; justify-content: space-between; padding: 6px 0; }
+
+@media (max-width: 1100px) {
+  .operations-grid { grid-template-columns: 1fr; }
+}
+
 .dashboard-content {
   padding: 32px;
+}
+
+.dashboard-content--loading > :not(.page-header):not(.dashboard-skeleton) {
+  display: none;
 }
 
 .stat-card,

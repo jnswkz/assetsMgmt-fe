@@ -80,15 +80,18 @@
               </tr>
             } @empty {
               <tr>
-                <td class="empty-row" colspan="5">No requests match your search.</td>
+                <td class="empty-row" colspan="5">
+                  @if (isLoading()) {
+                    <app-loading-skeleton variant="table" [rows]="5" />
+                  } @else {
+                    No requests match your search.
+                  }
+                </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
-      @if (isLoading()) {
-        <p class="empty-state">Loading your requests…</p>
-      }
     </section>
   </main>
 
@@ -145,6 +148,10 @@
           <div>
             <dt>Lock expires</dt>
             <dd>{{ request.lockExpires }}</dd>
+          </div>
+          <div>
+            <dt>Handover due</dt>
+            <dd>{{ request.handoverDue }}</dd>
           </div>
         </dl>
       </section>
@@ -265,7 +272,7 @@
 
           <div class="request-assets__list" role="listbox" aria-label="Available asset instances">
             @if (isLoadingRequestableAssets()) {
-              <p class="request-assets__empty">Loading available instances...</p>
+              <app-loading-skeleton variant="cards" [rows]="3" />
             } @else {
             @for (asset of filteredRequestableAssets(); track asset.id) {
               <button

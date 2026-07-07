@@ -7,10 +7,12 @@ import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { AssetsService } from '../services/assets.service';
 import { UsersService } from '../services/users.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { controlValue, matchesSearch } from '../utils/search';
 import { environment } from '../../environments/environment';
 import {
   AllocationHistoryItem,
+  AssetDepreciationDto,
   AssetInstanceDto,
   AssetInstanceListItem,
   AssetModelListItem,
@@ -96,6 +98,7 @@ interface AssetDepreciationView {
   readonly annualDepreciation: string;
   readonly estimatedBookValue: string;
   readonly remainingLife: string;
+  readonly alert: string;
 }
 
 type AssetDetailTab = 'overview' | 'history' | 'maintenance' | 'depreciation';
@@ -126,7 +129,7 @@ const EMPTY_INSTANCE_FORM: InstanceForm = {
 
 @Component({
   selector: 'app-assets-page',
-  imports: [FilterSelect, MatIconModule, UserMenu],
+  imports: [FilterSelect, LoadingSkeleton, MatIconModule, UserMenu],
   templateUrl: './assets-page.html',
   styleUrl: './assets-page.css',
 })
@@ -415,8 +418,9 @@ export class AssetsPage {
       maintenance: this.canAdminAssets()
         ? this.assetsApi.maintenance(id, { page: 1, pageSize: 50 }).pipe(catchError(() => of(zeroPage)))
         : of(zeroPage),
+      depreciation: this.assetsApi.depreciation(id).pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ detail, history, maintenance }) => {
+      next: ({ detail, history, maintenance, depreciation }) => {
         this.assetsApi.model(detail.modelId).subscribe({
           next: model =>
             this.selectedAsset.set(
@@ -429,6 +433,7 @@ export class AssetsPage {
                 maintenanceRecords: maintenance.total,
                 allocationHistory: history.items.map(toAllocationHistoryItem),
                 maintenanceHistory: maintenance.items.map(toMaintenanceHistoryItem),
+                depreciation,
               })
             ),
           error: () =>
@@ -442,6 +447,7 @@ export class AssetsPage {
                 maintenanceRecords: maintenance.total,
                 allocationHistory: history.items.map(toAllocationHistoryItem),
                 maintenanceHistory: maintenance.items.map(toMaintenanceHistoryItem),
+                depreciation,
               })
             ),
         });
@@ -640,15 +646,10 @@ function toDetail(
     maintenanceRecords: number;
     allocationHistory: readonly AssetAllocationHistoryView[];
     maintenanceHistory: readonly AssetMaintenanceHistoryView[];
+    depreciation: AssetDepreciationDto | null;
   }
 ): AssetDetailView {
-  const depreciation = toDepreciationView(
-    dto.acquisitionCost,
-    dto.salvageValue,
-    dto.acquisitionDate,
-    extra.usefulLifeMonths,
-    extra.depreciationMethod
-  );
+  const depreciation = toDepreciationView(extra.depreciation);
 
   return {
     id: dto.id,
@@ -701,37 +702,33 @@ function toMaintenanceHistoryItem(item: MaintenanceRecordDto): AssetMaintenanceH
   };
 }
 
-function toDepreciationView(
-  acquisitionCost: number,
-  salvageValue: number,
-  acquisitionDate: string,
-  usefulLifeMonths: number,
-  depreciationMethod: string
-): AssetDepreciationView {
-  const depreciableBase = Math.max(acquisitionCost - salvageValue, 0);
-  const elapsedMonths = monthsSince(acquisitionDate);
-  const monthlyDepreciation =
-    usefulLifeMonths > 0 && depreciationMethod === 'Straight line'
-      ? depreciableBase / usefulLifeMonths
-      : null;
+function toDepreciationView(value: AssetDepreciationDto | null): AssetDepreciationView {
+  if (!value) {
+    return {
+      method: '-', usefulLife: '-', acquisitionCost: '-', salvageValue: '-', depreciableBase: '-',
+      monthlyDepreciation: 'Unavailable', annualDepreciation: 'Unavailable',
+      estimatedBookValue: 'Unavailable', remainingLife: '-', alert: 'No depreciation policy configured',
+    };
+  }
+  const depreciableBase = Math.max(value.acquisitionCost - value.salvageValue, 0);
+  const monthlyDepreciation = value.policy.method === 0
+    ? depreciableBase / value.policy.usefulLifeMonths
+    : null;
   const annualDepreciation = monthlyDepreciation === null ? null : monthlyDepreciation * 12;
-  const estimatedBookValue =
-    monthlyDepreciation === null
-      ? null
-      : Math.max(acquisitionCost - Math.min(elapsedMonths, usefulLifeMonths) * monthlyDepreciation, salvageValue);
-  const remainingLifeMonths =
-    usefulLifeMonths > 0 ? Math.max(usefulLifeMonths - Math.min(elapsedMonths, usefulLifeMonths), 0) : null;
 
   return {
-    method: depreciationMethod,
-    usefulLife: usefulLifeMonths ? `${usefulLifeMonths} months` : '-',
-    acquisitionCost: formatCurrency(acquisitionCost),
-    salvageValue: formatCurrency(salvageValue),
+    method: depreciationMethodLabel(value.policy.method),
+    usefulLife: `${value.policy.usefulLifeMonths} months`,
+    acquisitionCost: formatCurrency(value.acquisitionCost),
+    salvageValue: formatCurrency(value.salvageValue),
     depreciableBase: formatCurrency(depreciableBase),
     monthlyDepreciation: monthlyDepreciation === null ? 'Unavailable' : formatCurrency(monthlyDepreciation),
     annualDepreciation: annualDepreciation === null ? 'Unavailable' : formatCurrency(annualDepreciation),
-    estimatedBookValue: estimatedBookValue === null ? 'Unavailable' : formatCurrency(estimatedBookValue),
-    remainingLife: remainingLifeMonths === null ? '-' : `${remainingLifeMonths} months`,
+    estimatedBookValue: formatCurrency(value.bookValue),
+    remainingLife: `${value.remainingUsefulLifeMonths} months`,
+    alert: value.fullyDepreciated ? 'Fully depreciated / upgrade due'
+      : value.nearEndOfLife ? 'Three months or less of useful life remaining'
+      : value.needsUpgrade ? 'Upgrade recommended' : '',
   };
 }
 
@@ -762,23 +759,6 @@ function formatDate(value: string | null): string {
     return '-';
   }
   return value.slice(0, 10);
-}
-
-function monthsSince(value: string): number {
-  if (!value) {
-    return 0;
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 0;
-  }
-
-  const now = new Date();
-  let months = (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth());
-  if (now.getDate() < date.getDate()) {
-    months -= 1;
-  }
-  return Math.max(months, 0);
 }
 
 function numberOrNull(value: string): number | null {

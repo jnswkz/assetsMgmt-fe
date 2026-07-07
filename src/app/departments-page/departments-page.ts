@@ -4,6 +4,7 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { DepartmentsService } from '../services/departments.service';
 import { UsersService } from '../services/users.service';
 import { controlValue, matchesSearch } from '../utils/search';
@@ -22,7 +23,7 @@ interface Department {
 
 @Component({
   selector: 'app-departments-page',
-  imports: [A11yModule, MatIconModule, UserMenu],
+  imports: [A11yModule, LoadingSkeleton, MatIconModule, UserMenu],
   templateUrl: './departments-page.html',
   styleUrl: './departments-page.css',
 })

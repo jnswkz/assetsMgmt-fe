@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { DashboardPage } from './dashboard-page';
 import { AuthService } from '../services/auth.service';
 import {
@@ -15,6 +15,7 @@ import { AssetsService } from '../services/assets.service';
 import { AllocationsService } from '../services/allocations.service';
 import { ReportsService } from '../services/reports.service';
 import { RequestsService } from '../services/requests.service';
+import { InventoryService } from '../services/inventory.service';
 
 const DASHBOARD_STATS: DashboardStatsDto = {
   totalAssets: 20,
@@ -106,33 +107,65 @@ const MODELS: PagedResult<AssetModelListItem> = {
 describe('DashboardPage', () => {
   let fixture: ComponentFixture<DashboardPage>;
   let auth: AuthService;
-  let reports: { dashboard: ReturnType<typeof vi.fn> };
+  let reports: {
+    dashboard: ReturnType<typeof vi.fn>;
+    assetMatrix: ReturnType<typeof vi.fn>;
+    allocationTimeline: ReturnType<typeof vi.fn>;
+    depreciationAlerts: ReturnType<typeof vi.fn>;
+  };
   let requestsApi: {
     mine: ReturnType<typeof vi.fn>;
     pending: ReturnType<typeof vi.fn>;
   };
   let assetsApi: {
-    list: ReturnType<typeof vi.fn>;
-    modelsPaged: ReturnType<typeof vi.fn>;
+    available: ReturnType<typeof vi.fn>;
   };
   let allocationsApi: {
     mineAssets: ReturnType<typeof vi.fn>;
+  };
+  let inventoryApi: {
+    create: ReturnType<typeof vi.fn>;
+    addItem: ReturnType<typeof vi.fn>;
+    close: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
     reports = {
       dashboard: vi.fn(() => of(DASHBOARD_STATS)),
+      assetMatrix: vi.fn(() => of([{ assetInstanceId: 'asset-1', assetCode: 'IT-LAP-0001',
+        modelName: 'ThinkPad X1', category: 0, status: 2, location: 'Desk A1', holderId: 'user-1',
+        holderName: 'Ben Carter', departmentId: 'dept-1', departmentName: 'Operations' }])),
+      allocationTimeline: vi.fn(() => of([{ allocationId: 'allocation-1', assetInstanceId: 'asset-1',
+        assetCode: 'IT-LAP-0001', modelName: 'ThinkPad X1', userId: 'user-1', userName: 'Ben Carter',
+        departmentId: 'dept-1', departmentName: 'Operations', eventType: 0,
+        startDate: '2026-07-01', endDate: null, expectedReturnAt: '2027-07-01' }])),
+      depreciationAlerts: vi.fn(() => of([])),
     };
     requestsApi = {
       mine: vi.fn(() => of(REQUESTS)),
       pending: vi.fn(() => of(REQUESTS)),
     };
     assetsApi = {
-      list: vi.fn(() => of(AVAILABLE_ASSETS)),
-      modelsPaged: vi.fn(() => of(MODELS)),
+      available: vi.fn(() => of(AVAILABLE_ASSETS.items.map(item => ({
+        id: item.id,
+        assetCode: item.assetCode ?? '',
+        modelId: item.modelId,
+        modelName: item.modelName ?? '',
+        category: 7,
+        specsSummary: null,
+        location: item.location,
+      })))),
     };
     allocationsApi = {
       mineAssets: vi.fn(() => of(MY_ASSETS)),
+    };
+    const openScan = { id: 'scan-1', departmentId: 'dept-1', departmentName: 'Operations', status: 0,
+      startedAt: '2026-07-07', closedAt: null, found: 0, missing: 0, unexpected: 0, items: [] };
+    inventoryApi = {
+      create: vi.fn(() => of(openScan)),
+      addItem: vi.fn(() => of({ ...openScan, found: 1, items: [{ id: 'item-1', assetInstanceId: 'asset-1',
+        assetCode: 'IT-LAP-0001', result: 0, scannedAt: '2026-07-07' }] })),
+      close: vi.fn(() => of({ ...openScan, status: 1, closedAt: '2026-07-07', found: 1, items: [] })),
     };
 
     await TestBed.configureTestingModule({
@@ -143,6 +176,7 @@ describe('DashboardPage', () => {
         { provide: RequestsService, useValue: requestsApi },
         { provide: AssetsService, useValue: assetsApi },
         { provide: AllocationsService, useValue: allocationsApi },
+        { provide: InventoryService, useValue: inventoryApi },
       ],
     }).compileComponents();
 
@@ -171,12 +205,39 @@ describe('DashboardPage', () => {
     expect(reports.dashboard).not.toHaveBeenCalled();
   });
 
+  it('keeps successful employee panels when one endpoint fails', async () => {
+    assetsApi.available.mockReturnValueOnce(throwError(() => new Error('network')));
+
+    const compiled = await createDashboard();
+
+    expect(compiled.textContent).toContain('IT-MT-0006');
+    expect(compiled.textContent).toContain('Some sections could not be loaded: available assets.');
+    expect(compiled.textContent).not.toContain('Unable to load your workspace.');
+  });
+
   it('should render the approval dashboard for AdminIT', async () => {
     const compiled = await createDashboard('alice');
 
     expect(compiled.textContent).toContain('Welcome, Alice');
     expect(compiled.textContent).toContain('Pending Requests');
     expect(compiled.textContent).toContain('Requests awaiting approval');
+    expect(compiled.textContent).toContain('IT-LAP-0001');
+    expect(compiled.textContent).toContain('Allocation timeline');
+  });
+
+  it('should record an inventory scan from the manager dashboard', async () => {
+    const compiled = await createDashboard('alice');
+    Array.from(compiled.querySelectorAll<HTMLButtonElement>('button'))
+      .find(button => button.textContent?.includes('Start session'))?.click();
+    fixture.detectChanges();
+    const input = compiled.querySelector<HTMLInputElement>('#inventory-code');
+    input!.value = 'IT-LAP-0001';
+    input!.dispatchEvent(new Event('input'));
+    compiled.querySelector<HTMLButtonElement>('.inventory-entry button[type="submit"]')?.click();
+    fixture.detectChanges();
+
+    expect(inventoryApi.addItem).toHaveBeenCalledWith('scan-1', 'IT-LAP-0001');
+    expect(compiled.textContent).toContain('Found');
   });
 
   it('should filter requests from the top search', async () => {

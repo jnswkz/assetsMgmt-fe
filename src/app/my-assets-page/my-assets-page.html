@@ -39,6 +39,9 @@
       <p class="status-message" role="status">{{ statusMessage() }}</p>
     }
 
+    @if (isLoading()) {
+      <app-loading-skeleton variant="cards" [rows]="4" />
+    } @else {
     <section class="assigned-grid" aria-label="Assigned assets">
       @for (asset of filteredAssignedAssets(); track asset.code) {
         <article class="asset-card">
@@ -63,6 +66,10 @@
               <dt>Assigned since</dt>
               <dd>{{ asset.assignedSince }}</dd>
             </div>
+            <div>
+              <dt>Expected return</dt>
+              <dd>{{ asset.expectedReturn }}</dd>
+            </div>
           </dl>
 
           <button
@@ -79,9 +86,10 @@
         </article>
       } @empty {
         <article class="asset-card">
-          <p>{{ isLoading() ? 'Loading your assets…' : 'No assigned assets match your search.' }}</p>
+          <p>No assigned assets match your search.</p>
         </article>
       }
     </section>
+    }
   </main>
 </div>

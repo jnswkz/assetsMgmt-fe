@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { AllocationsService } from '../services/allocations.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { controlValue, matchesSearch } from '../utils/search';
 import { MyAssetItem } from '../models/api.model';
 import { assetStatusLabel } from '../models/enums';
@@ -15,12 +16,13 @@ interface AssignedAsset {
   readonly status: string;
   readonly location: string;
   readonly assignedSince: string;
+  readonly expectedReturn: string;
   readonly handoverDocumentNumber: string | null;
 }
 
 @Component({
   selector: 'app-my-assets-page',
-  imports: [MatIconModule, UserMenu],
+  imports: [LoadingSkeleton, MatIconModule, UserMenu],
   templateUrl: './my-assets-page.html',
   styleUrl: './my-assets-page.css',
 })
@@ -44,6 +46,7 @@ export class MyAssetsPage {
         asset.status,
         asset.location,
         asset.assignedSince,
+        asset.expectedReturn,
         asset.handoverDocumentNumber,
       ])
     )
@@ -104,6 +107,7 @@ function toAssignedAsset(item: MyAssetItem): AssignedAsset {
     status: assetStatusLabel(item.status),
     location: item.location ?? '-',
     assignedSince: (item.startDate ?? '').slice(0, 10) || '-',
+    expectedReturn: item.expectedReturnAt?.slice(0, 10) ?? 'Open-ended',
     handoverDocumentNumber: item.handoverDocumentNumber ?? null,
   };
 }

@@ -84,7 +84,11 @@
               } @empty {
                 <tr>
                   <td class="empty-row" colspan="6">
-                    {{ isLoading() ? 'Loading disposals…' : 'No disposals match your filters.' }}
+                    @if (isLoading()) {
+                      <app-loading-skeleton variant="table" [rows]="5" />
+                    } @else {
+                      No disposals match your filters.
+                    }
                   </td>
                 </tr>
               }

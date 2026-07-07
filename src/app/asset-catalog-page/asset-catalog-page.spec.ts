@@ -179,8 +179,10 @@ describe('AssetCatalogPage', () => {
     inputs[3].dispatchEvent(new Event('input'));
     selects[1].value = '0';
     selects[1].dispatchEvent(new Event('change'));
-    inputs[4].value = 'Copilot+ PC';
+    inputs[4].value = 'platform';
     inputs[4].dispatchEvent(new Event('input'));
+    inputs[5].value = 'Copilot+ PC';
+    inputs[5].dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
     submitModelForm(compiled);
@@ -191,7 +193,7 @@ describe('AssetCatalogPage', () => {
       category: 0,
       manufacturer: 'Microsoft',
       modelNumber: 'SL7-15',
-      specs: 'Copilot+ PC',
+      specs: '{"platform":"Copilot+ PC"}',
       defaultUsefulLifeMonths: 36,
       defaultDepreciationMethod: 0,
       imageUrl: null,

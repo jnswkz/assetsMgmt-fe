@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { DisposalsService } from '../services/disposals.service';
 import { controlValue, matchesSearch } from '../utils/search';
 import { DisposalDto } from '../models/api.model';
@@ -23,7 +24,7 @@ const DISPOSAL_TYPES: readonly DisposalType[] = DISPOSAL_TYPE;
 
 @Component({
   selector: 'app-disposals-page',
-  imports: [FilterSelect, MatIconModule, UserMenu],
+  imports: [FilterSelect, LoadingSkeleton, MatIconModule, UserMenu],
   templateUrl: './disposals-page.html',
   styleUrl: './disposals-page.css',
 })

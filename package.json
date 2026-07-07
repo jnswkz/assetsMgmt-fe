@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "NODE_OPTIONS=--disable-warning=DEP0205 ng serve",
-    "build": "NODE_OPTIONS=--disable-warning=DEP0205 ng build",
-    "watch": "NODE_OPTIONS=--disable-warning=DEP0205 ng build --watch --configuration development",
-    "test": "NODE_OPTIONS=--disable-warning=DEP0205 ng test",
+    "start": "cross-env NODE_OPTIONS=--disable-warning=DEP0205 ng serve",
+    "build": "cross-env NODE_OPTIONS=--disable-warning=DEP0205 ng build",
+    "watch": "cross-env NODE_OPTIONS=--disable-warning=DEP0205 ng build --watch --configuration development",
+    "test": "cross-env NODE_OPTIONS=--disable-warning=DEP0205 ng test",
     "serve:ssr:assetsMgmt-fe": "node dist/assetsMgmt-fe/server/server.mjs"
   },
   "private": true,
@@ -33,6 +33,7 @@
     "@tailwindcss/postcss": "^4.1.12",
     "@types/express": "^5.0.1",
     "@types/node": "^20.17.19",
+    "cross-env": "^7.0.3",
     "jsdom": "^28.0.0",
     "postcss": "^8.5.3",
     "prettier": "^3.8.1",

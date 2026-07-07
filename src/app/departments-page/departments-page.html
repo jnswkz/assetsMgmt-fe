@@ -92,7 +92,11 @@
               } @empty {
                 <tr>
                   <td class="empty-row" [attr.colspan]="canManage() ? 6 : 5">
-                    {{ isLoading() ? 'Loading departments…' : 'No departments match your search.' }}
+                    @if (isLoading()) {
+                      <app-loading-skeleton variant="table" [rows]="5" />
+                    } @else {
+                      No departments match your search.
+                    }
                   </td>
                 </tr>
               }

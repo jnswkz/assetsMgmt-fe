@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { AllocationsService } from '../services/allocations.service';
 import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
 import { AllocationHistoryItem } from '../models/api.model';
@@ -22,7 +23,7 @@ interface AllocationRecord {
 
 @Component({
   selector: 'app-allocation-history-page',
-  imports: [FilterSelect, MatIconModule, UserMenu],
+  imports: [FilterSelect, LoadingSkeleton, MatIconModule, UserMenu],
   templateUrl: './allocation-history-page.html',
   styleUrl: './allocation-history-page.css',
 })

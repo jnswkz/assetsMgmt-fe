@@ -1,0 +1,82 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.skeleton-block,
+.skeleton-card {
+  background: linear-gradient(90deg, var(--soft, #f1f3f5) 25%, var(--surface, #fff) 50%, var(--soft, #f1f3f5) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.table-skeleton {
+  display: grid;
+}
+
+.table-row {
+  align-items: center;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1.2fr 1fr 1fr .65fr;
+  min-height: 58px;
+  padding: 0 16px;
+}
+
+.cell {
+  border-radius: 6px;
+  display: block;
+  height: 13px;
+}
+
+.cell--strong { height: 16px; }
+.cell--short { width: 70%; }
+
+.card-grid,
+.dashboard-stats,
+.dashboard-panels {
+  display: grid;
+  gap: 16px;
+}
+
+.card-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.skeleton-card { border: 1px solid var(--border, #e5e7eb); border-radius: 12px; padding: 20px; }
+.card-title, .card-line { border-radius: 6px; display: block; height: 18px; margin-bottom: 24px; width: 62%; }
+.card-line { height: 13px; margin-bottom: 12px; width: 100%; }
+.card-line--short { width: 72%; }
+
+.dashboard-stats { grid-template-columns: repeat(5, minmax(120px, 1fr)); }
+.stat-block, .panel-block, .dashboard-table { border-radius: 12px; display: block; }
+.stat-block { height: 104px; }
+.dashboard-panels { grid-template-columns: 1fr 2fr; margin-top: 20px; }
+.panel-block { height: 280px; }
+.dashboard-table { height: 260px; margin-top: 20px; }
+
+@keyframes skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (max-width: 900px) {
+  .dashboard-stats { grid-template-columns: repeat(2, 1fr); }
+  .dashboard-panels { grid-template-columns: 1fr; }
+  .table-row { grid-template-columns: 1.2fr 1fr; }
+  .table-row .cell:nth-child(n + 3) { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block,
+  .skeleton-card { animation: none; }
+}

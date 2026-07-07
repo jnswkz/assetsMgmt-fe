@@ -94,7 +94,11 @@
               } @empty {
                 <tr>
                   <td class="empty-row" colspan="7">
-                    {{ isLoading() ? 'Loading allocation history…' : 'No allocation history matches your filters.' }}
+                    @if (isLoading()) {
+                      <app-loading-skeleton variant="table" [rows]="7" />
+                    } @else {
+                      No allocation history matches your filters.
+                    }
                   </td>
                 </tr>
               }

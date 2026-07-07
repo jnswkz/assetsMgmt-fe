@@ -105,7 +105,11 @@
             } @empty {
               <tr>
                 <td class="empty-row" colspan="7">
-                  {{ isLoading() ? 'Loading asset models…' : 'No asset models match your search.' }}
+                  @if (isLoading()) {
+                    <app-loading-skeleton variant="table" [rows]="6" />
+                  } @else {
+                    No asset models match your search.
+                  }
                 </td>
               </tr>
             }
@@ -161,10 +165,21 @@
             }
           </select>
         </label>
-        <label class="model-form__wide">
-          <span>Specs</span>
-          <input type="text" [value]="form().specs" (input)="updateFormField('specs', $event)" />
-        </label>
+        <fieldset class="model-form__wide spec-editor">
+          <legend>Dynamic specifications</legend>
+          @for (spec of specEntries(); track $index; let i = $index) {
+            <div class="spec-row">
+              <input type="text" aria-label="Specification key" placeholder="Key" [value]="spec.key" (input)="updateSpec(i, 'key', $event)" />
+              <input type="text" aria-label="Specification value" placeholder="Value" [value]="spec.value" (input)="updateSpec(i, 'value', $event)" />
+              <button type="button" aria-label="Remove specification" (click)="removeSpec(i)">
+                <mat-icon aria-hidden="true">remove</mat-icon>
+              </button>
+            </div>
+          }
+          <button type="button" class="spec-add" (click)="addSpec()">
+            <mat-icon aria-hidden="true">add</mat-icon> Add specification
+          </button>
+        </fieldset>
 
         @if (formError()) {
           <p class="login-error" role="alert">{{ formError() }}</p>

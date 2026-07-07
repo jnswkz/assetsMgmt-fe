@@ -1,0 +1,41 @@
+<div class="skeleton" [class]="'skeleton skeleton--' + variant()" role="status" aria-live="polite">
+  <span class="sr-only">Loading content</span>
+
+  @switch (variant()) {
+    @case ('dashboard') {
+      <div class="dashboard-stats" aria-hidden="true">
+        @for (item of rowIndexes().slice(0, 5); track item) {
+          <span class="skeleton-block stat-block"></span>
+        }
+      </div>
+      <div class="dashboard-panels" aria-hidden="true">
+        <span class="skeleton-block panel-block"></span>
+        <span class="skeleton-block panel-block"></span>
+      </div>
+      <span class="skeleton-block dashboard-table"></span>
+    }
+    @case ('cards') {
+      <div class="card-grid" aria-hidden="true">
+        @for (item of rowIndexes(); track item) {
+          <div class="skeleton-card">
+            <span class="skeleton-block card-title"></span>
+            <span class="skeleton-block card-line"></span>
+            <span class="skeleton-block card-line card-line--short"></span>
+          </div>
+        }
+      </div>
+    }
+    @default {
+      <div class="table-skeleton" aria-hidden="true">
+        @for (item of rowIndexes(); track item) {
+          <div class="table-row">
+            <span class="skeleton-block cell cell--strong"></span>
+            <span class="skeleton-block cell"></span>
+            <span class="skeleton-block cell"></span>
+            <span class="skeleton-block cell cell--short"></span>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

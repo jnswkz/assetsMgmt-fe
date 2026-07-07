@@ -147,7 +147,11 @@
               } @empty {
                 <tr>
                   <td class="empty-row" colspan="8">
-                    {{ isLoading() ? 'Loading users…' : 'No users match your filters.' }}
+                    @if (isLoading()) {
+                      <app-loading-skeleton variant="table" [rows]="7" />
+                    } @else {
+                      No users match your filters.
+                    }
                   </td>
                 </tr>
               }

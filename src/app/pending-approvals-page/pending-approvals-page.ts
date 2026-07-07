@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { catchError, forkJoin, of } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { RequestsService } from '../services/requests.service';
 import { controlValue, matchesSearch } from '../utils/search';
 import { AllocationRequestDto, RequestListItem } from '../models/api.model';
@@ -21,7 +22,7 @@ interface PendingApproval {
 
 @Component({
   selector: 'app-pending-approvals-page',
-  imports: [MatIconModule, UserMenu],
+  imports: [LoadingSkeleton, MatIconModule, UserMenu],
   templateUrl: './pending-approvals-page.html',
   styleUrl: './pending-approvals-page.css',
 })

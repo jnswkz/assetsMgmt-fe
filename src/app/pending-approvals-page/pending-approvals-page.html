@@ -98,7 +98,11 @@
               } @empty {
                 <tr>
                   <td class="empty-row" colspan="8">
-                    {{ isLoading() ? 'Loading approvals…' : 'No approvals match your search.' }}
+                    @if (isLoading()) {
+                      <app-loading-skeleton variant="table" [rows]="5" />
+                    } @else {
+                      No approvals match your search.
+                    }
                   </td>
                 </tr>
               }

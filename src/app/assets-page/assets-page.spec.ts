@@ -65,6 +65,7 @@ describe('AssetsPage', () => {
     get: ReturnType<typeof vi.fn>;
     history: ReturnType<typeof vi.fn>;
     maintenance: ReturnType<typeof vi.fn>;
+    depreciation: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -79,6 +80,14 @@ describe('AssetsPage', () => {
       maintenance: vi.fn(() =>
         of({ items: MAINTENANCE_HISTORY, total: MAINTENANCE_HISTORY.length, page: 1, pageSize: 50, totalPages: 1 })
       ),
+      depreciation: vi.fn(() => of({
+        assetInstanceId: 'asset-1', assetCode: 'AH-0001', acquisitionCost: 72000000,
+        salvageValue: 0, bookValue: 54000000, accumulatedDepreciation: 18000000,
+        asOfDate: '2026-07-01', isLedgerValue: true, remainingUsefulLifeMonths: 36,
+        fullyDepreciated: false, nearEndOfLife: false, needsUpgrade: false,
+        policy: { id: 'policy-1', assetModelId: 'model-mbp', method: 0, usefulLifeMonths: 48,
+          annualDeclineRate: null, salvageValuePercent: 0, effectiveFrom: '2025-01-01', effectiveTo: null },
+      })),
     };
 
     await TestBed.configureTestingModule({

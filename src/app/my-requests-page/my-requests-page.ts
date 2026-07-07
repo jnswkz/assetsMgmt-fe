@@ -7,17 +7,17 @@ import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { RequestsService } from '../services/requests.service';
 import { AssetsService } from '../services/assets.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { controlValue, matchesSearch } from '../utils/search';
 import {
   AllocationRequestDto,
-  AssetInstanceListItem,
+  AvailableAssetItem,
   AssetModelListItem,
   RequestListItem,
 } from '../models/api.model';
 import {
   ASSET_CATEGORY,
   assetCategoryLabel,
-  assetStatusValue,
   requestStatusLabel,
 } from '../models/enums';
 
@@ -38,6 +38,7 @@ interface AssetRequestDetail extends AssetRequest {
   readonly approver: string;
   readonly decisionReason: string;
   readonly lockExpires: string;
+  readonly handoverDue: string;
 }
 
 interface RequestableAsset {
@@ -59,7 +60,7 @@ interface RequestableModel {
 
 @Component({
   selector: 'app-my-requests-page',
-  imports: [A11yModule, FilterSelect, MatIconModule, UserMenu],
+  imports: [A11yModule, FilterSelect, LoadingSkeleton, MatIconModule, UserMenu],
   templateUrl: './my-requests-page.html',
   styleUrl: './my-requests-page.css',
 })
@@ -109,7 +110,7 @@ export class MyRequestsPage {
     })
   );
   protected readonly filteredRequestableAssets = computed(() =>
-    this.requestableAssets()
+    this.requestableAssets().filter(asset => asset.modelId === this.selectedModelId())
   );
   protected readonly selectedRequestableModel = computed(
     () => this.requestableModels().find(model => model.id === this.selectedModelId()) ?? null
@@ -246,12 +247,16 @@ export class MyRequestsPage {
   }
 
   private loadRequestCatalog(): void {
-    this.assetsApi.models().subscribe({
-      next: result => {
-        this.assetModels.set(result.items);
+    this.isLoadingRequestableAssets.set(true);
+    this.assetsApi.available().subscribe({
+      next: assets => {
+        this.requestableAssets.set(assets.map(toRequestableAsset));
+        this.assetModels.set(toRequestableModels(assets));
+        this.isLoadingRequestableAssets.set(false);
         this.syncSelectedModelAndAsset(true);
       },
       error: () => {
+        this.isLoadingRequestableAssets.set(false);
         this.formError.set('Unable to load asset models.');
       },
     });
@@ -286,36 +291,15 @@ export class MyRequestsPage {
     const selectedModel =
       this.requestableModels().find(model => model.id === modelId) ?? null;
 
-    this.isLoadingRequestableAssets.set(true);
     this.toastMessage.set('');
     this.selectedAssetId.set('');
 
-    this.assetsApi
-      .list({
-        status: assetStatusValue('In stock'),
-        modelId,
-        page: 1,
-        pageSize: 500,
-      })
-      .subscribe({
-        next: result => {
-          this.requestableAssets.set(result.items.map(toRequestableAsset));
-          this.loadedAssetModelId.set(modelId);
-          this.selectedAssetId.set(result.items[0]?.id ?? '');
-          this.isLoadingRequestableAssets.set(false);
-
-          if (result.items.length === 0 && selectedModel) {
-            this.toastMessage.set(`No instances of ${selectedModel.name} are currently in stock.`);
-          }
-        },
-        error: () => {
-          this.requestableAssets.set([]);
-          this.loadedAssetModelId.set('');
-          this.selectedAssetId.set('');
-          this.isLoadingRequestableAssets.set(false);
-          this.formError.set('Unable to load available assets.');
-        },
-      });
+    const assets = this.filteredRequestableAssets();
+    this.loadedAssetModelId.set(modelId);
+    this.selectedAssetId.set(assets[0]?.id ?? '');
+    if (assets.length === 0 && selectedModel) {
+      this.toastMessage.set(`No instances of ${selectedModel.name} are currently in stock.`);
+    }
   }
 }
 
@@ -346,21 +330,38 @@ function toRequestDetail(item: AllocationRequestDto): AssetRequestDetail {
     approver: item.approverName ?? '-',
     decisionReason: item.rejectedReason ?? '-',
     lockExpires: item.lockExpiresAt?.slice(0, 10) ?? '-',
+    handoverDue: item.handoverDueAt?.slice(0, 16) ?? '-',
   };
 }
 
-function toRequestableAsset(item: AssetInstanceListItem): RequestableAsset {
-  const assetCode = item.assetCode ?? '-';
-  const model = item.modelName ?? '-';
-  const serial = item.serial ?? '-';
+function toRequestableAsset(item: AvailableAssetItem): RequestableAsset {
+  const assetCode = item.assetCode;
+  const model = item.modelName;
   const location = item.location ?? 'Unassigned location';
   return {
     id: item.id,
     modelId: item.modelId,
     assetCode,
     model,
-    label: `${assetCode} - ${serial} - ${location}`,
+    label: `${assetCode} - ${location}`,
   };
+}
+
+function toRequestableModels(items: readonly AvailableAssetItem[]): AssetModelListItem[] {
+  const models = new Map<string, AssetModelListItem>();
+  for (const item of items) {
+    const current = models.get(item.modelId);
+    models.set(item.modelId, {
+      id: item.modelId,
+      name: item.modelName,
+      category: item.category,
+      manufacturer: null,
+      modelNumber: null,
+      defaultUsefulLifeMonths: 0,
+      instanceCount: (current?.instanceCount ?? 0) + 1,
+    });
+  }
+  return [...models.values()];
 }
 
 function toRequestableModel(item: AssetModelListItem): RequestableModel {

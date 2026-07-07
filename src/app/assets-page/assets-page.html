@@ -341,6 +341,9 @@
             <div class="tab-panel tab-panel--stacked" role="tabpanel">
               <section>
                 <h2>Depreciation</h2>
+                @if (detail.depreciation.alert) {
+                  <p class="status-message" role="status">{{ detail.depreciation.alert }}</p>
+                }
                 <dl class="detail-metrics">
                   <div>
                     <dt>Method</dt>
@@ -483,7 +486,11 @@
               } @empty {
                 <tr>
                   <td class="empty-row" colspan="7">
-                    {{ isLoading() ? 'Loading assets…' : 'No assets match your search.' }}
+                    @if (isLoading()) {
+                      <app-loading-skeleton variant="table" [rows]="7" />
+                    } @else {
+                      No assets match your search.
+                    }
                   </td>
                 </tr>
               }

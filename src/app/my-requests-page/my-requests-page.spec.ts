@@ -42,6 +42,7 @@ describe('MyRequestsPage', () => {
   let assetsApi: {
     list: ReturnType<typeof vi.fn>;
     models: ReturnType<typeof vi.fn>;
+    available: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -89,6 +90,15 @@ describe('MyRequestsPage', () => {
         )
       ),
       models: vi.fn(() => of(page<AssetModelListItem>(availableModels))),
+      available: vi.fn(() => of(availableAssets.map(item => ({
+        id: item.id,
+        assetCode: item.assetCode ?? '',
+        modelId: item.modelId,
+        modelName: item.modelName ?? '',
+        category: availableModels.find(model => model.id === item.modelId)?.category ?? 7,
+        specsSummary: null,
+        location: item.location,
+      })))),
     };
 
     await TestBed.configureTestingModule({
@@ -228,7 +238,7 @@ describe('MyRequestsPage', () => {
       ?.click();
     fixture.detectChanges();
 
-    expect(compiled.textContent).toContain('No instances of iPhone 15 Pro are currently in stock.');
+    expect(compiled.textContent).toContain('No asset models match your search.');
     expect(compiled.querySelectorAll('.request-assets__option').length).toBe(0);
   });
 
@@ -257,10 +267,7 @@ describe('MyRequestsPage', () => {
     fixture.detectChanges();
 
     expect(compiled.textContent).toContain('Claude');
-    expect(assetsApi.list).toHaveBeenLastCalledWith(
-      expect.objectContaining({ modelId: 'model-claude-0001' })
-    );
-    expect(assetsApi.models).toHaveBeenCalledTimes(2);
+    expect(assetsApi.available).toHaveBeenCalledTimes(2);
   });
 });
 

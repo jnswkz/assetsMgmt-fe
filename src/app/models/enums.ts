@@ -23,6 +23,7 @@ export const ASSET_CATEGORY = [
   'Printer',
   'NetworkDevice',
   'Other',
+  'SoftwareLicense',
 ] as const;
 export type AssetCategoryLabel = (typeof ASSET_CATEGORY)[number];
 

@@ -30,7 +30,7 @@
     </div>
   </header>
 
-  <main class="dashboard-content" aria-labelledby="dashboard-title">
+  <main class="dashboard-content" [class.dashboard-content--loading]="isLoading()" aria-labelledby="dashboard-title">
     <section class="page-header">
       <div>
         <h1 id="dashboard-title">Welcome, {{ user().firstName }}</h1>
@@ -51,6 +51,10 @@
 
     @if (errorMessage()) {
       <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+    }
+
+    @if (isLoading()) {
+      <app-loading-skeleton class="dashboard-skeleton" variant="dashboard" [rows]="5" />
     }
 
     @if (isEmployeeDashboard()) {
@@ -304,10 +308,73 @@
         </article>
 
         <article class="panel activity-panel">
-          <h2>Recent activity</h2>
-          <div class="activity-list">
-            <p class="empty-state">Activity feed is not available yet.</p>
+          <h2>Asset matrix</h2>
+          <div class="dashboard-table-wrap">
+            <table>
+              <thead><tr><th>Asset</th><th>Status</th><th>Location</th><th>Holder</th></tr></thead>
+              <tbody>
+                @for (asset of matrix(); track asset.id) {
+                  <tr><td><strong>{{ asset.code }}</strong><br><small>{{ asset.model }}</small></td><td>{{ asset.status }}</td><td>{{ asset.location }}</td><td>{{ asset.holder }}</td></tr>
+                } @empty {
+                  <tr><td colspan="4" class="empty-state">No scoped assets.</td></tr>
+                }
+              </tbody>
+            </table>
           </div>
+        </article>
+      </section>
+
+      <section class="operations-grid" aria-label="Allocation and inventory operations">
+        <article class="panel">
+          <h2>Allocation timeline</h2>
+          <div class="activity-list">
+            @for (event of timeline(); track event.id) {
+              <article class="timeline-row">
+                <strong>{{ event.asset }}</strong>
+                <p>{{ event.event }} to {{ event.user }} on {{ event.date }}</p>
+                <small>Expected return: {{ event.expectedReturn }}</small>
+              </article>
+            } @empty { <p class="empty-state">No allocation events.</p> }
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Depreciation alerts</h2>
+          <div class="activity-list">
+            @for (alert of depreciationAlerts(); track alert.assetInstanceId) {
+              <article class="timeline-row">
+                <strong>{{ alert.assetCode }} · {{ alert.modelName }}</strong>
+                <p>{{ alert.fullyDepreciated ? 'Fully depreciated' : 'Near end of useful life' }}</p>
+                <small>{{ alert.remainingUsefulLifeMonths }} months remaining</small>
+              </article>
+            } @empty { <p class="empty-state">No depreciation alerts.</p> }
+          </div>
+        </article>
+
+        <article class="panel inventory-panel">
+          <header class="panel-header">
+            <h2>QR inventory</h2>
+            @if (!inventoryScan()) {
+              <button type="button" class="primary-action" (click)="startInventory()">Start session</button>
+            }
+          </header>
+          @if (inventoryScan(); as scan) {
+            <p>Found {{ scan.found }} · Missing {{ scan.missing }} · Unexpected {{ scan.unexpected }}</p>
+            @if (!scan.closedAt) {
+              <form class="inventory-entry" (submit)="$event.preventDefault(); addInventoryItem()">
+                <label for="inventory-code">Scan or enter asset code</label>
+                <input id="inventory-code" type="text" [value]="inventoryCode()" (input)="updateInventoryCode($event)" autocomplete="off" />
+                <button type="submit">Record</button>
+                <button type="button" (click)="closeInventory()">Close session</button>
+              </form>
+            }
+            <ul class="inventory-results">
+              @for (item of scan.items; track item.id) {
+                <li><span>{{ item.assetCode }}</span><strong>{{ inventoryResult(item.result) }}</strong></li>
+              }
+            </ul>
+          }
+          <p aria-live="polite">{{ inventoryMessage() }}</p>
         </article>
       </section>
     }

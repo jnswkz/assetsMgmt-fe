@@ -6,6 +6,7 @@ import { FilterSelect } from '../filter-select/filter-select';
 import { Role } from '../models/nav-item';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { DepartmentsService } from '../services/departments.service';
 import { UsersService } from '../services/users.service';
 import { controlValue, matchesSearch, uniqueStrings } from '../utils/search';
@@ -31,7 +32,7 @@ const STATUSES: readonly UserStatus[] = ['Active', 'Inactive'];
 
 @Component({
   selector: 'app-users-page',
-  imports: [A11yModule, FilterSelect, MatIconModule, UserMenu],
+  imports: [A11yModule, FilterSelect, LoadingSkeleton, MatIconModule, UserMenu],
   templateUrl: './users-page.html',
   styleUrl: './users-page.css',
 })

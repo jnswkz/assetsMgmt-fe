@@ -36,6 +36,16 @@ export interface AssetInstanceDto extends AssetInstanceListItem {
   readonly updatedAt: string;
 }
 
+export interface AvailableAssetItem {
+  readonly id: string;
+  readonly assetCode: string;
+  readonly modelId: string;
+  readonly modelName: string;
+  readonly category: number;
+  readonly specsSummary: string | null;
+  readonly location: string | null;
+}
+
 export interface CreateAssetInstanceRequest {
   readonly modelId: string;
   readonly serial?: string | null;
@@ -99,6 +109,7 @@ export interface MyAssetItem {
   readonly status: number;
   readonly location: string | null;
   readonly startDate: string;
+  readonly expectedReturnAt?: string | null;
   readonly allocationRequestId?: string | null;
   readonly handoverDocumentNumber?: string | null;
   readonly handoverFilePath?: string | null;
@@ -123,6 +134,7 @@ export interface AssetModelDto {
   readonly manufacturer: string | null;
   readonly modelNumber: string | null;
   readonly specs: string | null;
+  readonly specsJson?: string | null;
   readonly defaultUsefulLifeMonths: number;
   readonly defaultDepreciationMethod: number;
   readonly imageUrl: string | null;
@@ -159,6 +171,7 @@ export interface AllocationRequestDto {
   readonly approvedAt: string | null;
   readonly rejectedReason: string | null;
   readonly lockExpiresAt: string | null;
+  readonly handoverDueAt?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -173,6 +186,7 @@ export interface RequestListItem {
   readonly status: number;
   readonly expectedDurationMonths: number | null;
   readonly lockExpiresAt: string | null;
+  readonly handoverDueAt?: string;
   readonly createdAt: string;
 }
 
@@ -204,6 +218,7 @@ export interface AllocationHistoryItem {
   readonly eventType: number;
   readonly startDate: string;
   readonly endDate: string | null;
+  readonly expectedReturnAt?: string | null;
   readonly allocationRequestId: string | null;
   readonly notes: string | null;
   readonly createdAt: string;
@@ -337,4 +352,95 @@ export interface IdleAssetItem {
   readonly acquisitionDate: string;
   readonly lastActivityAt: string | null;
   readonly idleMonths: number;
+}
+
+export interface DepreciationPolicyDto {
+  readonly id: string;
+  readonly assetModelId: string;
+  readonly method: number;
+  readonly usefulLifeMonths: number;
+  readonly annualDeclineRate: number | null;
+  readonly salvageValuePercent: number;
+  readonly effectiveFrom: string;
+  readonly effectiveTo: string | null;
+}
+
+export type PutDepreciationPolicyRequest = Omit<DepreciationPolicyDto, 'id' | 'assetModelId'>;
+
+export interface AssetDepreciationDto {
+  readonly assetInstanceId: string;
+  readonly assetCode: string;
+  readonly acquisitionCost: number;
+  readonly salvageValue: number;
+  readonly bookValue: number;
+  readonly accumulatedDepreciation: number;
+  readonly asOfDate: string;
+  readonly isLedgerValue: boolean;
+  readonly remainingUsefulLifeMonths: number;
+  readonly fullyDepreciated: boolean;
+  readonly nearEndOfLife: boolean;
+  readonly needsUpgrade: boolean;
+  readonly policy: DepreciationPolicyDto;
+}
+
+export interface DepreciationAlertItem {
+  readonly assetInstanceId: string;
+  readonly assetCode: string;
+  readonly modelName: string;
+  readonly holderName: string | null;
+  readonly departmentId: string | null;
+  readonly bookValue: number;
+  readonly remainingUsefulLifeMonths: number;
+  readonly fullyDepreciated: boolean;
+  readonly nearEndOfLife: boolean;
+  readonly needsUpgrade: boolean;
+}
+
+export interface AssetMatrixItem {
+  readonly assetInstanceId: string;
+  readonly assetCode: string;
+  readonly modelName: string;
+  readonly category: number;
+  readonly status: number;
+  readonly location: string | null;
+  readonly holderId: string | null;
+  readonly holderName: string | null;
+  readonly departmentId: string | null;
+  readonly departmentName: string | null;
+}
+
+export interface AllocationTimelineItem {
+  readonly allocationId: string;
+  readonly assetInstanceId: string;
+  readonly assetCode: string;
+  readonly modelName: string;
+  readonly userId: string;
+  readonly userName: string;
+  readonly departmentId: string | null;
+  readonly departmentName: string | null;
+  readonly eventType: number;
+  readonly startDate: string;
+  readonly endDate: string | null;
+  readonly expectedReturnAt: string | null;
+}
+
+export interface InventoryScanItemDto {
+  readonly id: string;
+  readonly assetInstanceId: string | null;
+  readonly assetCode: string;
+  readonly result: number;
+  readonly scannedAt: string;
+}
+
+export interface InventoryScanDto {
+  readonly id: string;
+  readonly departmentId: string | null;
+  readonly departmentName: string | null;
+  readonly status: number;
+  readonly startedAt: string;
+  readonly closedAt: string | null;
+  readonly found: number;
+  readonly missing: number;
+  readonly unexpected: number;
+  readonly items: readonly InventoryScanItemDto[];
 }

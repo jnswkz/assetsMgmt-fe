@@ -7,6 +7,7 @@ import { FilterSelect } from '../filter-select/filter-select';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { AssetsService } from '../services/assets.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { controlValue, matchesSearch } from '../utils/search';
 import { AssetModelListItem, CreateAssetModelRequest, PagedResult } from '../models/api.model';
 import {
@@ -36,6 +37,11 @@ interface ModelForm {
   defaultDepreciationMethod: number;
 }
 
+interface SpecEntry {
+  readonly key: string;
+  readonly value: string;
+}
+
 const EMPTY_FORM: ModelForm = {
   name: '',
   category: 0,
@@ -48,7 +54,7 @@ const EMPTY_FORM: ModelForm = {
 
 @Component({
   selector: 'app-asset-catalog-page',
-  imports: [FilterSelect, MatIconModule, UserMenu],
+  imports: [FilterSelect, LoadingSkeleton, MatIconModule, UserMenu],
   templateUrl: './asset-catalog-page.html',
   styleUrl: './asset-catalog-page.css',
 })
@@ -79,6 +85,7 @@ export class AssetCatalogPage {
   protected readonly isDialogOpen = signal(false);
   protected readonly editingId = signal<string | null>(null);
   protected readonly form = signal<ModelForm>({ ...EMPTY_FORM });
+  protected readonly specEntries = signal<readonly SpecEntry[]>([{ key: '', value: '' }]);
   protected readonly formError = signal('');
   protected readonly isSaving = signal(false);
 
@@ -176,6 +183,7 @@ export class AssetCatalogPage {
     }
     this.editingId.set(null);
     this.form.set({ ...EMPTY_FORM });
+    this.specEntries.set([{ key: '', value: '' }]);
     this.formError.set('');
     this.isDialogOpen.set(true);
   }
@@ -199,6 +207,7 @@ export class AssetCatalogPage {
             : '',
           defaultDepreciationMethod: model.defaultDepreciationMethod,
         });
+        this.specEntries.set(parseSpecs(model.specsJson ?? model.specs));
         this.isDialogOpen.set(true);
       },
       error: () => this.errorMessage.set('Unable to load the model for editing.'),
@@ -220,6 +229,21 @@ export class AssetCatalogPage {
     this.form.update(current => ({ ...current, [field]: Number.isNaN(value) ? 0 : value }));
   }
 
+  protected updateSpec(index: number, field: keyof SpecEntry, event: Event): void {
+    const value = controlValue(event);
+    this.specEntries.update(entries => entries.map((entry, i) => i === index ? { ...entry, [field]: value } : entry));
+  }
+
+  protected addSpec(): void {
+    this.specEntries.update(entries => [...entries, { key: '', value: '' }]);
+  }
+
+  protected removeSpec(index: number): void {
+    this.specEntries.update(entries => entries.length === 1
+      ? [{ key: '', value: '' }]
+      : entries.filter((_, i) => i !== index));
+  }
+
   protected saveModel(): void {
     const form = this.form();
     const name = form.name.trim();
@@ -228,12 +252,18 @@ export class AssetCatalogPage {
       return;
     }
 
+    const specs = specsJson(this.specEntries());
+    if (specs === undefined) {
+      this.formError.set('Specification keys must be unique and non-empty.');
+      return;
+    }
+
     const body: CreateAssetModelRequest = {
       name,
       category: form.category,
       manufacturer: form.manufacturer.trim() || null,
       modelNumber: form.modelNumber.trim() || null,
-      specs: form.specs.trim() || null,
+      specs,
       defaultUsefulLifeMonths: numberOrNull(form.defaultUsefulLifeMonths),
       defaultDepreciationMethod: form.defaultDepreciationMethod,
       imageUrl: null,
@@ -311,4 +341,23 @@ function numberOrNull(value: string): number | null {
   }
   const parsed = Number(trimmed);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function parseSpecs(value: string | null): SpecEntry[] {
+  if (!value) return [{ key: '', value: '' }];
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const entries = Object.entries(parsed).map(([key, item]) => ({ key, value: String(item ?? '') }));
+    return entries.length > 0 ? entries : [{ key: '', value: '' }];
+  } catch {
+    return [{ key: 'details', value }];
+  }
+}
+
+function specsJson(entries: readonly SpecEntry[]): string | null | undefined {
+  const populated = entries.filter(entry => entry.key.trim() || entry.value.trim());
+  if (populated.length === 0) return null;
+  const keys = populated.map(entry => entry.key.trim());
+  if (keys.some(key => !key) || new Set(keys).size !== keys.length) return undefined;
+  return JSON.stringify(Object.fromEntries(populated.map(entry => [entry.key.trim(), entry.value.trim()])));
 }

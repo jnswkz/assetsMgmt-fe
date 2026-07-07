@@ -2,19 +2,25 @@ import { UserMenu } from '../user-menu/user-menu';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
+import type { MonoTypeOperatorFunction } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { ReportsService } from '../services/reports.service';
 import { RequestsService } from '../services/requests.service';
 import { AssetsService } from '../services/assets.service';
 import { AllocationsService } from '../services/allocations.service';
+import { InventoryService } from '../services/inventory.service';
+import { LoadingSkeleton } from '../loading-skeleton/loading-skeleton';
 import { Role } from '../models/nav-item';
 import { controlValue, matchesSearch } from '../utils/search';
 import {
-  AssetInstanceListItem,
-  AssetModelListItem,
+  AvailableAssetItem,
+  AssetMatrixItem,
+  AllocationTimelineItem,
   DashboardStatsDto,
+  DepreciationAlertItem,
+  InventoryScanDto,
   MyAssetItem,
   RequestListItem,
 } from '../models/api.model';
@@ -76,6 +82,24 @@ interface AttentionItem {
   readonly icon: string;
 }
 
+interface MatrixRow {
+  readonly id: string;
+  readonly code: string;
+  readonly model: string;
+  readonly status: string;
+  readonly location: string;
+  readonly holder: string;
+}
+
+interface TimelineRow {
+  readonly id: string;
+  readonly asset: string;
+  readonly user: string;
+  readonly event: string;
+  readonly date: string;
+  readonly expectedReturn: string;
+}
+
 // Stable colors per asset status index (matches enums.ASSET_STATUS order).
 const STATUS_COLORS = [
   '#10b981', // In stock
@@ -102,7 +126,7 @@ const EMPTY_DASHBOARD_STATS: DashboardStatsDto = {
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [RouterModule, MatIconModule, UserMenu],
+  imports: [RouterModule, MatIconModule, LoadingSkeleton, UserMenu],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -113,6 +137,7 @@ export class DashboardPage {
   private readonly requestsApi = inject(RequestsService);
   private readonly assetsApi = inject(AssetsService);
   private readonly allocationsApi = inject(AllocationsService);
+  private readonly inventoryApi = inject(InventoryService);
   protected readonly theme = inject(ThemeService);
 
   protected readonly user = this.auth.profile;
@@ -123,6 +148,12 @@ export class DashboardPage {
   private readonly assignedAssets = signal<readonly AssignedAssetRow[]>([]);
   private readonly availableModels = signal<readonly AvailableModelRow[]>([]);
   private readonly availableAssets = signal<readonly AvailableAssetRow[]>([]);
+  protected readonly matrix = signal<readonly MatrixRow[]>([]);
+  protected readonly timeline = signal<readonly TimelineRow[]>([]);
+  protected readonly depreciationAlerts = signal<readonly DepreciationAlertItem[]>([]);
+  protected readonly inventoryScan = signal<InventoryScanDto | null>(null);
+  protected readonly inventoryCode = signal('');
+  protected readonly inventoryMessage = signal('');
   protected readonly isLoading = signal(true);
   protected readonly errorMessage = signal('');
   protected readonly isEmployeeDashboard = computed(() => (this.auth.role() ?? 'Employee') === 'Employee');
@@ -234,16 +265,26 @@ export class DashboardPage {
       return;
     }
 
-    const requests$ = this.requestsApi.pending({ page: 1, pageSize: 6 });
-    const stats$ = this.reports.dashboard();
+    const failed = new Set<string>();
+    const requests$ = this.requestsApi.pending({ page: 1, pageSize: 6 }).pipe(
+      recover('requests', emptyPage<RequestListItem>(), failed)
+    );
+    const stats$ = this.reports.dashboard().pipe(recover('summary', EMPTY_DASHBOARD_STATS, failed));
 
     forkJoin({
       stats: stats$,
       requests: requests$,
+      matrix: this.reports.assetMatrix().pipe(recover('asset matrix', [] as readonly AssetMatrixItem[], failed)),
+      timeline: this.reports.allocationTimeline().pipe(recover('timeline', [] as readonly AllocationTimelineItem[], failed)),
+      alerts: this.reports.depreciationAlerts().pipe(recover('depreciation alerts', [] as readonly DepreciationAlertItem[], failed)),
     }).subscribe({
-      next: ({ stats, requests }) => {
+      next: ({ stats, requests, matrix, timeline, alerts }) => {
         this.stats.set(stats);
         this.requests.set(requests.items.map(toRequestRow));
+        this.matrix.set(matrix.map(toMatrixRow));
+        this.timeline.set(timeline.map(toTimelineRow));
+        this.depreciationAlerts.set(alerts);
+        this.errorMessage.set(sectionError(failed));
         this.isLoading.set(false);
       },
       error: () => {
@@ -254,19 +295,25 @@ export class DashboardPage {
   }
 
   private loadEmployeeDashboard(): void {
+    const failed = new Set<string>();
     forkJoin({
-      assignedAssets: this.allocationsApi.mineAssets(),
-      requests: this.requestsApi.mine({ page: 1, pageSize: 6 }),
-      availableAssets: this.assetsApi.list({ status: 0, page: 1, pageSize: 4 }),
-      models: this.assetsApi.modelsPaged({ page: 1, pageSize: 5 }),
-      stats: of(EMPTY_DASHBOARD_STATS),
+      assignedAssets: this.allocationsApi.mineAssets().pipe(
+        recover('your devices', [] as readonly MyAssetItem[], failed)
+      ),
+      requests: this.requestsApi.mine({ page: 1, pageSize: 6 }).pipe(
+        recover('your requests', emptyPage<RequestListItem>(), failed)
+      ),
+      availableAssets: this.assetsApi.available().pipe(
+        recover('available assets', [] as readonly AvailableAssetItem[], failed)
+      ),
     }).subscribe({
-      next: ({ assignedAssets, requests, availableAssets, models, stats }) => {
-        this.stats.set(stats);
+      next: ({ assignedAssets, requests, availableAssets }) => {
+        this.stats.set(EMPTY_DASHBOARD_STATS);
         this.assignedAssets.set(assignedAssets.map(toAssignedAssetRow));
         this.requests.set(requests.items.map(toRequestRow));
-        this.availableAssets.set(availableAssets.items.map(toAvailableAssetRow));
-        this.availableModels.set(models.items.map(toAvailableModelRow));
+        this.availableAssets.set(availableAssets.slice(0, 4).map(toAvailableAssetRow));
+        this.availableModels.set(toAvailableModelRows(availableAssets).slice(0, 5));
+        this.errorMessage.set(sectionError(failed));
         this.isLoading.set(false);
       },
       error: () => {
@@ -283,6 +330,80 @@ export class DashboardPage {
   protected barHeight(value: number): string {
     return `${(value / this.maxCategoryValue()) * 100}%`;
   }
+
+  protected updateInventoryCode(event: Event): void {
+    this.inventoryCode.set(controlValue(event));
+  }
+
+  protected startInventory(): void {
+    this.inventoryApi.create().subscribe({
+      next: scan => {
+        this.inventoryScan.set(scan);
+        this.inventoryMessage.set('Inventory session started.');
+      },
+      error: () => this.inventoryMessage.set('Unable to start inventory session.'),
+    });
+  }
+
+  protected addInventoryItem(): void {
+    const scan = this.inventoryScan();
+    const code = this.inventoryCode().trim();
+    if (!scan || !code) return;
+    this.inventoryApi.addItem(scan.id, code).subscribe({
+      next: updated => {
+        this.inventoryScan.set(updated);
+        this.inventoryCode.set('');
+        this.inventoryMessage.set(`${code} recorded.`);
+      },
+      error: () => this.inventoryMessage.set('Unable to record that asset code.'),
+    });
+  }
+
+  protected closeInventory(): void {
+    const scan = this.inventoryScan();
+    if (!scan) return;
+    this.inventoryApi.close(scan.id).subscribe({
+      next: updated => {
+        this.inventoryScan.set(updated);
+        this.inventoryMessage.set('Inventory session closed and missing assets calculated.');
+      },
+      error: () => this.inventoryMessage.set('Unable to close inventory session.'),
+    });
+  }
+
+  protected inventoryResult(value: number): string {
+    return ['Found', 'Missing', 'Unexpected'][value] ?? 'Unknown';
+  }
+}
+
+function emptyPage<T>() {
+  return { items: [] as readonly T[], total: 0, page: 1, pageSize: 6, totalPages: 0 };
+}
+
+function recover<T>(
+  section: string,
+  value: T,
+  failed: Set<string>
+): MonoTypeOperatorFunction<T> {
+  return catchError(() => {
+    failed.add(section);
+    return of(value);
+  });
+}
+
+function sectionError(failed: ReadonlySet<string>): string {
+  return failed.size === 0 ? '' : `Some sections could not be loaded: ${[...failed].join(', ')}.`;
+}
+
+function toMatrixRow(item: AssetMatrixItem): MatrixRow {
+  return { id: item.assetInstanceId, code: item.assetCode, model: item.modelName,
+    status: assetStatusLabel(item.status), location: item.location ?? '-', holder: item.holderName ?? 'Warehouse' };
+}
+
+function toTimelineRow(item: AllocationTimelineItem): TimelineRow {
+  return { id: item.allocationId, asset: `${item.assetCode} · ${item.modelName}`, user: item.userName,
+    event: ['Allocated', 'Returned', 'Transferred'][item.eventType] ?? 'Changed', date: formatDate(item.startDate),
+    expectedReturn: formatDate(item.expectedReturnAt) };
 }
 
 function toRequestRow(item: RequestListItem): RequestRow {
@@ -307,21 +428,26 @@ function toAssignedAssetRow(item: MyAssetItem): AssignedAssetRow {
   };
 }
 
-function toAvailableModelRow(item: AssetModelListItem): AvailableModelRow {
-  return {
-    id: item.id,
-    name: item.name ?? '-',
-    category: assetCategoryLabel(item.category),
-    manufacturer: item.manufacturer ?? '-',
-    instanceCount: item.instanceCount,
-  };
+function toAvailableModelRows(items: readonly AvailableAssetItem[]): AvailableModelRow[] {
+  const models = new Map<string, AvailableModelRow>();
+  for (const item of items) {
+    const current = models.get(item.modelId);
+    models.set(item.modelId, {
+      id: item.modelId,
+      name: item.modelName,
+      category: assetCategoryLabel(item.category),
+      manufacturer: '-',
+      instanceCount: (current?.instanceCount ?? 0) + 1,
+    });
+  }
+  return [...models.values()];
 }
 
-function toAvailableAssetRow(item: AssetInstanceListItem): AvailableAssetRow {
+function toAvailableAssetRow(item: AvailableAssetItem): AvailableAssetRow {
   return {
     id: item.id,
-    code: item.assetCode ?? '-',
-    model: item.modelName ?? '-',
+    code: item.assetCode,
+    model: item.modelName,
     location: item.location ?? '-',
   };
 }

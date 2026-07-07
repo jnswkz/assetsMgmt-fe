@@ -4,6 +4,10 @@ import { ApiService, QueryParams } from './api.service';
 import {
   AssetInstanceDto,
   AssetInstanceListItem,
+  AvailableAssetItem,
+  AssetDepreciationDto,
+  DepreciationPolicyDto,
+  PutDepreciationPolicyRequest,
   AssetModelDto,
   AssetModelListItem,
   AllocationHistoryItem,
@@ -53,6 +57,10 @@ export class AssetsService {
       pageSize: query.pageSize,
     };
     return this.api.get<PagedResult<AssetInstanceListItem>>('/api/assets', params);
+  }
+
+  available(search?: string): Observable<readonly AvailableAssetItem[]> {
+    return this.api.get<readonly AvailableAssetItem[]>('/api/assets/available', { search });
   }
 
   get(id: string): Observable<AssetInstanceDto> {
@@ -105,6 +113,21 @@ export class AssetsService {
 
   deleteModel(id: string): Observable<void> {
     return this.api.delete<void>(`/api/asset-models/${id}`);
+  }
+
+  depreciation(id: string): Observable<AssetDepreciationDto> {
+    return this.api.get<AssetDepreciationDto>(`/api/assets/${id}/depreciation`);
+  }
+
+  depreciationPolicy(modelId: string): Observable<DepreciationPolicyDto> {
+    return this.api.get<DepreciationPolicyDto>(`/api/asset-models/${modelId}/depreciation-policy`);
+  }
+
+  saveDepreciationPolicy(
+    modelId: string,
+    body: PutDepreciationPolicyRequest
+  ): Observable<DepreciationPolicyDto> {
+    return this.api.put<DepreciationPolicyDto>(`/api/asset-models/${modelId}/depreciation-policy`, body);
   }
 
   history(assetId: string, query: PageQuery = {}): Observable<PagedResult<AllocationHistoryItem>> {

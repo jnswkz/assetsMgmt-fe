@@ -23,7 +23,8 @@ export const routes: Routes = [
   },
   {
     path: 'assets/catalog',
-    canActivate: [authGuard],
+    canActivate: [authGuard, roleGuard],
+    data: { allowedRoles: ['AdminIT', 'Manager'] },
     loadComponent: () => import('./asset-catalog-page/asset-catalog-page').then(m => m.AssetCatalogPage),
   },
   {
@@ -33,7 +34,8 @@ export const routes: Routes = [
   },
   {
     path: 'assets',
-    canActivate: [authGuard],
+    canActivate: [authGuard, roleGuard],
+    data: { allowedRoles: ['AdminIT', 'Manager'] },
     loadComponent: () => import('./assets-page/assets-page').then(m => m.AssetsPage),
   },
   {

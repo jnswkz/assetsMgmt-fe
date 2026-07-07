@@ -34,7 +34,7 @@ export class LoginPage {
       next: success => {
         this.isSubmitting.set(false);
         if (success) {
-          void this.router.navigateByUrl('/dashboard');
+          void this.router.navigateByUrl(this.auth.role() === 'Employee' ? '/assets/mine' : '/dashboard');
         } else {
           this.errorMessage.set('Invalid username or password.');
         }
