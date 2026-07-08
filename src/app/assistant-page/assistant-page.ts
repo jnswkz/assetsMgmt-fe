@@ -1,10 +1,11 @@
 import { isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { distinctUntilChanged, filter, map } from 'rxjs';
-import { AiAskResponse, AiSourceReference } from '../models/ai.model';
+import { AiAskResponse, AiPendingAction, AiSourceReference } from '../models/ai.model';
 import { controlValue, matchesSearch } from '../utils/search';
 import { UserMenu } from '../user-menu/user-menu';
 import { AuthService } from '../services/auth.service';
@@ -20,6 +21,7 @@ interface AssistantMessage {
   readonly createdAt: string;
   readonly suggestedActions: readonly string[];
   readonly sources: readonly AiSourceReference[];
+  readonly pendingAction: AiPendingAction | null;
 }
 
 interface StoredAssistantSession {
@@ -49,6 +51,7 @@ export class AssistantPage {
   protected readonly conversationId = signal<string | null>(null);
   protected readonly messages = signal<readonly AssistantMessage[]>([]);
   protected readonly isSending = signal(false);
+  protected readonly busyActionId = signal<string | null>(null);
   protected readonly errorMessage = signal('');
   private readonly restoredUserId = signal<string | null>(null);
 
@@ -107,6 +110,54 @@ export class AssistantPage {
     this.sendPrompt(prompt.trim());
   }
 
+  protected confirmAction(messageId: string, action: AiPendingAction): void {
+    if (this.busyActionId()) return;
+    this.busyActionId.set(action.id);
+    this.errorMessage.set('');
+    this.assistant.confirm(action.id).subscribe({
+      next: response => {
+        this.messages.update(messages => messages.map(message =>
+          message.id === messageId
+            ? {
+                ...message,
+                content: response.answer,
+                suggestedActions: response.suggestedActions,
+                sources: safeSources(response.sources),
+                pendingAction: null,
+              }
+            : message
+        ));
+        this.busyActionId.set(null);
+        this.persistSession();
+      },
+      error: error => {
+        this.errorMessage.set(actionErrorMessage(error));
+        this.busyActionId.set(null);
+      },
+    });
+  }
+
+  protected cancelAction(messageId: string, action: AiPendingAction): void {
+    if (this.busyActionId()) return;
+    this.busyActionId.set(action.id);
+    this.errorMessage.set('');
+    this.assistant.cancel(action.id).subscribe({
+      next: () => {
+        this.messages.update(messages => messages.map(message =>
+          message.id === messageId
+            ? { ...message, content: `${message.content}\n\nAction cancelled.`, pendingAction: null }
+            : message
+        ));
+        this.busyActionId.set(null);
+        this.persistSession();
+      },
+      error: error => {
+        this.errorMessage.set(actionErrorMessage(error));
+        this.busyActionId.set(null);
+      },
+    });
+  }
+
   private sendPrompt(prompt: string): void {
     if (!prompt || this.isSending()) {
       return;
@@ -119,6 +170,7 @@ export class AssistantPage {
       createdAt: new Date().toISOString(),
       suggestedActions: [],
       sources: [],
+      pendingAction: null,
     };
 
     this.messages.update(messages => [...messages, userMessage]);
@@ -155,7 +207,8 @@ export class AssistantPage {
         content: response.answer,
         createdAt: new Date().toISOString(),
         suggestedActions: response.suggestedActions,
-        sources: response.sources,
+        sources: safeSources(response.sources),
+        pendingAction: response.pendingAction ?? null,
       },
     ]);
     this.persistSession();
@@ -213,7 +266,16 @@ export class AssistantPage {
   private readSession(userId: string): StoredAssistantSession | null {
     try {
       const value = this.storage()?.getItem(this.storageKey(userId));
-      return value ? (JSON.parse(value) as StoredAssistantSession) : null;
+      if (!value) return null;
+      const session = JSON.parse(value) as StoredAssistantSession;
+      return {
+        ...session,
+        messages: session.messages.map(message => ({
+          ...message,
+          sources: safeSources(message.sources ?? []),
+          pendingAction: message.pendingAction ?? null,
+        })),
+      };
     } catch {
       this.storage()?.removeItem(this.storageKey(userId));
       return null;
@@ -234,4 +296,26 @@ export class AssistantPage {
       return null;
     }
   }
+}
+
+function safeSources(sources: readonly AiSourceReference[]): readonly AiSourceReference[] {
+  return sources.filter(source => {
+    try {
+      const url = new URL(source.url);
+      return url.protocol === 'https:' || url.protocol === 'http:';
+    } catch {
+      return false;
+    }
+  });
+}
+
+function actionErrorMessage(error: unknown): string {
+  if (error instanceof HttpErrorResponse) {
+    const detail = typeof error.error?.detail === 'string' ? error.error.detail : '';
+    if (error.status === 404) return 'This action is unavailable or belongs to another user.';
+    if (error.status === 409 && detail.toLowerCase().includes('expired')) return 'This action expired. Please ask the assistant again.';
+    if (error.status === 409 && detail.toLowerCase().includes('executed')) return 'This action has already been executed.';
+    if (error.status === 409) return detail || 'The data changed before confirmation. Please review and try again.';
+  }
+  return 'Unable to process this action right now.';
 }

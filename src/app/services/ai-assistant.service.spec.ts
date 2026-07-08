@@ -17,6 +17,7 @@ describe('AiAssistantService', () => {
     };
     const api = {
       post: vi.fn(() => of(response)),
+      delete: vi.fn(() => of(undefined)),
     };
 
     TestBed.configureTestingModule({
@@ -41,5 +42,10 @@ describe('AiAssistantService', () => {
       conversationId: 'conversation-1',
     });
     expect(result).toEqual(response);
+
+    service.confirm('action-1').subscribe();
+    service.cancel('action-1').subscribe();
+    expect(api.post).toHaveBeenCalledWith('/api/ai/actions/action-1/confirm');
+    expect(api.delete).toHaveBeenCalledWith('/api/ai/actions/action-1');
   });
 });

@@ -59,8 +59,7 @@ const MY_ASSETS: readonly MyAssetItem[] = [
     startDate: '2026-06-01T00:00:00Z',
     allocationRequestId: 'req-monitor',
     handoverDocumentNumber: null,
-    handoverFilePath: null,
-    handoverFileUrl: null,
+    hasHandover: false,
   },
 ];
 

@@ -7,7 +7,9 @@ import { TokenStore } from './token-store';
 
 /** Auth endpoints must not carry a stale bearer or trigger the refresh loop. */
 function isAuthEndpoint(url: string): boolean {
-  return url.includes('/api/auth/login') || url.includes('/api/auth/refresh');
+  return url.includes('/api/auth/login') ||
+    url.includes('/api/auth/refresh') ||
+    url.includes('/api/auth/logout');
 }
 
 function withBearer(req: HttpRequest<unknown>, token: string): HttpRequest<unknown> {

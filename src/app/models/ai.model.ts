@@ -18,4 +18,13 @@ export interface AiAskResponse {
   readonly answer: string;
   readonly suggestedActions: readonly string[];
   readonly sources: readonly AiSourceReference[];
+  readonly pendingAction?: AiPendingAction | null;
+}
+
+export interface AiPendingAction {
+  readonly id: string;
+  readonly action: string;
+  readonly summary: string;
+  readonly expiresAt: string;
+  readonly status: 'Pending' | 'Executed' | 'Cancelled' | 'Expired';
 }

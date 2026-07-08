@@ -122,6 +122,13 @@ export class AuthService {
   }
 
   logout(): void {
+    const refreshToken = this.tokens.refreshToken();
+    if (refreshToken) {
+      this.injector
+        .get(ApiService)
+        .post<void>('/api/auth/logout', { refreshToken })
+        .subscribe({ error: () => undefined });
+    }
     this.clearSession();
     void this.injector.get(Router).navigateByUrl('/login');
   }

@@ -8,11 +8,17 @@ import { AssistantPage } from './assistant-page';
 describe('AssistantPage', () => {
   let fixture: ComponentFixture<AssistantPage>;
   let auth: AuthService;
-  let assistantApi: { ask: ReturnType<typeof vi.fn> };
+  let assistantApi: {
+    ask: ReturnType<typeof vi.fn>;
+    confirm: ReturnType<typeof vi.fn>;
+    cancel: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     assistantApi = {
       ask: vi.fn(),
+      confirm: vi.fn(),
+      cancel: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -219,6 +225,57 @@ describe('AssistantPage', () => {
 
     expect(compiled.textContent).toContain('Laptop bị nóng');
     expect(compiled.textContent).toContain('The assistant is unavailable right now. Please try again.');
+  });
+
+  it('should require an explicit button click before confirming a pending action', async () => {
+    assistantApi.ask.mockReturnValue(of(aiResponse({
+      answer: 'Please confirm.',
+      pendingAction: {
+        id: 'action-1',
+        action: 'create_allocation_request',
+        summary: 'Create allocation request for IT-LAP-1',
+        expiresAt: '2026-07-08T03:00:00Z',
+        status: 'Pending',
+      },
+    })));
+    assistantApi.confirm.mockReturnValue(of(aiResponse({ answer: 'Request created.' })));
+    const compiled = await createPage();
+    const component = fixture.componentInstance as unknown as {
+      updateInput(event: Event): void;
+      send(): void;
+    };
+
+    component.updateInput(fakeInputEvent('Create a request'));
+    component.send();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(assistantApi.confirm).not.toHaveBeenCalled();
+    expect(compiled.textContent).toContain('Confirmation required');
+    compiled.querySelector<HTMLButtonElement>('.pending-action__buttons button')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(assistantApi.confirm).toHaveBeenCalledWith('action-1');
+    expect(compiled.textContent).toContain('Request created.');
+    expect(compiled.textContent).not.toContain('Confirmation required');
+  });
+
+  it('should discard unsafe source URL schemes', async () => {
+    assistantApi.ask.mockReturnValue(of(aiResponse({
+      sources: [{ title: 'unsafe', url: 'javascript:alert(1)' }],
+    })));
+    const compiled = await createPage();
+    const component = fixture.componentInstance as unknown as {
+      updateInput(event: Event): void;
+      send(): void;
+    };
+    component.updateInput(fakeInputEvent('Manual'));
+    component.send();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(compiled.querySelector('.message__sources a')).toBeNull();
   });
 });
 

@@ -137,5 +137,6 @@ function assignedAsset(
     location,
     startDate,
     handoverDocumentNumber,
+    hasHandover: handoverDocumentNumber !== null,
   };
 }

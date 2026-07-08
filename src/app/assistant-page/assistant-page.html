@@ -85,6 +85,31 @@
                     }
                   </div>
                 }
+
+                @if (message.pendingAction; as action) {
+                  <section class="pending-action" aria-label="Action awaiting confirmation">
+                    <strong>Confirmation required</strong>
+                    <p>{{ action.summary }}</p>
+                    <small>Expires {{ action.expiresAt.slice(0, 16).replace('T', ' ') }} UTC</small>
+                    <div class="pending-action__buttons">
+                      <button
+                        type="button"
+                        (click)="confirmAction(message.id, action)"
+                        [disabled]="busyActionId() !== null"
+                      >
+                        {{ busyActionId() === action.id ? 'Processing...' : 'Confirm' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="pending-action__cancel"
+                        (click)="cancelAction(message.id, action)"
+                        [disabled]="busyActionId() !== null"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </section>
+                }
               </div>
             </article>
           }

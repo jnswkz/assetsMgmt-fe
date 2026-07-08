@@ -112,8 +112,7 @@ export interface MyAssetItem {
   readonly expectedReturnAt?: string | null;
   readonly allocationRequestId?: string | null;
   readonly handoverDocumentNumber?: string | null;
-  readonly handoverFilePath?: string | null;
-  readonly handoverFileUrl?: string | null;
+  readonly hasHandover: boolean;
 }
 
 // --- Asset models ---
@@ -204,7 +203,7 @@ export interface RejectRequestDto {
 export interface HandoverResult {
   readonly id: string;
   readonly documentNumber: string | null;
-  readonly filePath: string | null;
+  readonly downloadUrl: string;
 }
 
 // --- Allocation history ---
