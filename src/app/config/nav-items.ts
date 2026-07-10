@@ -32,6 +32,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Allocation History', icon: 'history_toggle_off', route: '/management/allocations', roles: ['AdminIT', 'Manager'] },
       { label: 'Disposals', icon: 'delete_outline', route: '/management/disposals', roles: ['AdminIT', 'Manager'] },
+      { label: 'Returns', icon: 'assignment_return', route: '/management/returns', roles: ['AdminIT', 'Manager'] },
       { label: 'Departments', icon: 'apartment', route: '/management/departments', roles: ['AdminIT', 'Manager'] },
     ],
   },

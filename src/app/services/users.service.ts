@@ -47,6 +47,10 @@ export class UsersService {
     return this.api.put<UserDto>(`/api/users/${id}`, body);
   }
 
+  offboard(id: string): Observable<UserDto> {
+    return this.api.post<UserDto>(`/api/users/${id}/offboard`, {});
+  }
+
   delete(id: string): Observable<void> {
     return this.api.delete<void>(`/api/users/${id}`);
   }

@@ -136,9 +136,9 @@
 
                       @if (openActionUsername() === profile.username) {
                         <div class="action-menu" role="menu">
-                          <button type="button" role="menuitem" (click)="toggleUserStatus(profile)">
-                            {{ profile.status === 'Active' ? 'Deactivate' : 'Activate' }}
-                          </button>
+	                          <button type="button" role="menuitem" (click)="toggleUserStatus(profile)">
+	                            {{ profile.status === 'Active' ? 'Offboard' : 'Activate' }}
+	                          </button>
                         </div>
                       }
                     </div>

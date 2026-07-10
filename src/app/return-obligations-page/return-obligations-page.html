@@ -1,0 +1,117 @@
+<div class="returns-page">
+  <header class="topbar">
+    <label class="search-box" for="returns-global-search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        id="returns-global-search"
+        type="search"
+        placeholder="Search assets, users, requests..."
+        [value]="globalSearch()"
+        (input)="updateGlobalSearch($event)"
+      />
+      <span aria-hidden="true">⌘K</span>
+    </label>
+
+    <div class="topbar-actions">
+      <button class="icon-button" type="button" data-theme-toggle [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'" (click)="theme.toggle()">
+        <mat-icon aria-hidden="true">{{ theme.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </button>
+      <button class="icon-button icon-button--notify" type="button" aria-label="Notifications">
+        <mat-icon aria-hidden="true">notifications</mat-icon>
+      </button>
+
+      <app-user-menu />
+    </div>
+  </header>
+
+  <main class="returns-content" aria-labelledby="returns-title">
+    @if (canView()) {
+      <section class="page-header">
+        <div>
+          <h1 id="returns-title">Return Obligations</h1>
+          <p>{{ openCount() }} assets awaiting return.</p>
+        </div>
+      </section>
+
+      @if (errorMessage()) {
+        <p class="empty-state" role="alert">{{ errorMessage() }}</p>
+      }
+
+      <section class="returns-toolbar" aria-label="Return filters">
+        <label class="resolved-toggle">
+          <input type="checkbox" [checked]="includeResolved()" (change)="toggleIncludeResolved($event)" />
+          Include resolved
+        </label>
+      </section>
+
+      <section class="returns-card" aria-label="Return obligations table">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Employee</th>
+                <th scope="col">Asset</th>
+                <th scope="col">Model</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Due</th>
+                <th scope="col">Status</th>
+                <th class="actions-heading" scope="col">
+                  <span class="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (record of filteredObligations(); track record.id) {
+                <tr>
+                  <td class="employee-cell">{{ record.employee }}</td>
+                  <td class="asset-code-cell">{{ record.assetCode }}</td>
+                  <td>{{ record.model }}</td>
+                  <td>{{ record.reason }}</td>
+                  <td class="muted-cell">{{ record.due }}</td>
+                  <td>
+                    <span class="return-status" [class.return-status--resolved]="!record.open">
+                      <span aria-hidden="true"></span>
+                      {{ record.open ? 'Open' : 'Resolved' }}
+                    </span>
+                  </td>
+                  <td class="row-actions">
+                    @if (record.open) {
+                      <button
+                        class="resolve-button"
+                        type="button"
+                        [disabled]="resolvingId() === record.id"
+                        (click)="resolve(record)"
+                      >
+                        <mat-icon aria-hidden="true">assignment_return</mat-icon>
+                        Mark returned
+                      </button>
+                    } @else {
+                      <span class="muted-cell">{{ record.resolved }}</span>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="empty-row" colspan="7">
+                    @if (isLoading()) {
+                      <app-loading-skeleton variant="table" [rows]="6" />
+                    } @else {
+                      No return obligations match your filters.
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    } @else {
+      <section class="access-panel" aria-labelledby="returns-title">
+        <h1 id="returns-title">Return Obligations</h1>
+        <p>Only managers and AdminIT users can manage return obligations.</p>
+      </section>
+    }
+
+    <p class="sr-only" aria-live="polite">{{ statusMessage() }}</p>
+  </main>
+</div>

@@ -302,6 +302,25 @@ export interface ResetPasswordRequest {
   readonly newPassword: string | null;
 }
 
+// --- Return obligations ---
+export interface ReturnObligationDto {
+  readonly id: string;
+  readonly userId: string;
+  readonly userName: string | null;
+  readonly assetInstanceId: string;
+  readonly assetCode: string | null;
+  readonly modelName: string | null;
+  readonly reason: number;
+  readonly dueAt: string;
+  readonly resolvedAt: string | null;
+  readonly resolutionNotes: string | null;
+  readonly createdAt: string;
+}
+
+export interface ResolveReturnObligationRequest {
+  readonly notes?: string | null;
+}
+
 // --- Disposals ---
 export interface DisposalDto {
   readonly id: string;

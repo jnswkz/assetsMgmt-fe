@@ -145,24 +145,29 @@ export class UsersPage {
 
   protected toggleUserStatus(profile: ManagedUser): void {
     const status: UserStatus = profile.status === 'Active' ? 'Inactive' : 'Active';
-    this.usersApi
-      .update(profile.id, {
-        email: profile.email,
-        fullName: profile.fullName,
-        role: userRoleValue(profile.role),
-        departmentId: profile.departmentId,
-        isActive: status === 'Active',
-      })
-      .subscribe({
-        next: updated => {
-          this.users.update(users =>
-            users.map(current => (current.id === profile.id ? toManagedUser(updated) : current))
-          );
-          this.statusMessage.set(`${profile.fullName} ${status.toLowerCase()}`);
-          this.closeActionMenu();
-        },
-        error: () => this.errorMessage.set(`Unable to update ${profile.fullName}.`),
-      });
+    const request =
+      status === 'Inactive'
+        ? this.usersApi.offboard(profile.id)
+        : this.usersApi.update(profile.id, {
+            email: profile.email,
+            fullName: profile.fullName,
+            role: userRoleValue(profile.role),
+            departmentId: profile.departmentId,
+            isActive: true,
+          });
+
+    request.subscribe({
+      next: updated => {
+        this.users.update(users =>
+          users.map(current => (current.id === profile.id ? toManagedUser(updated) : current))
+        );
+        this.statusMessage.set(
+          status === 'Inactive' ? `${profile.fullName} offboarded` : `${profile.fullName} active`
+        );
+        this.closeActionMenu();
+      },
+      error: () => this.errorMessage.set(`Unable to update ${profile.fullName}.`),
+    });
   }
 
   protected openAddDialog(): void {

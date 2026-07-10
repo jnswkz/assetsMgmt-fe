@@ -64,6 +64,13 @@ export const routes: Routes = [
     loadComponent: () => import('./disposals-page/disposals-page').then(m => m.DisposalsPage),
   },
   {
+    path: 'management/returns',
+    canActivate: [authGuard, roleGuard],
+    data: { allowedRoles: ['AdminIT', 'Manager'] },
+    loadComponent: () =>
+      import('./return-obligations-page/return-obligations-page').then(m => m.ReturnObligationsPage),
+  },
+  {
     path: 'management/departments',
     canActivate: [authGuard, roleGuard],
     data: { allowedRoles: ['AdminIT', 'Manager'] },

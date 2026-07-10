@@ -42,6 +42,9 @@ export const USER_ROLE = ['Employee', 'Manager', 'AdminIT'] as const;
 export const DISPOSAL_TYPE = ['Sold', 'Scrapped', 'Donated', 'Lost'] as const;
 export type DisposalTypeLabel = (typeof DISPOSAL_TYPE)[number];
 
+export const RETURN_OBLIGATION_REASON = ['Department changed', 'User deactivated'] as const;
+export type ReturnObligationReasonLabel = (typeof RETURN_OBLIGATION_REASON)[number];
+
 export const MAINTENANCE_TYPE = [
   'Repair',
   'Upgrade',
@@ -94,6 +97,10 @@ export function userRoleValue(role: Role): number {
 
 export function disposalTypeLabel(value: number): DisposalTypeLabel {
   return labelAt(DISPOSAL_TYPE, value, 'Scrapped');
+}
+
+export function returnObligationReasonLabel(value: number): ReturnObligationReasonLabel {
+  return labelAt(RETURN_OBLIGATION_REASON, value, 'User deactivated');
 }
 
 export function maintenanceStatusLabel(value: number): string {
